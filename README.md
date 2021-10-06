@@ -1,19 +1,10 @@
-# Associations between SARS-CoV-2 variants and risk of COVID-19 hospitalization among confirmed cases in Washington State: a retrospective cohort study
+## Associations between SARS-CoV-2 variants and risk of COVID-19 hospitalization among confirmed cases in Washington State: a retrospective cohort study
 
-Miguel I. Paredes1,2✝*, Stephanie M. Lunn3✝, Michael Famulare4, Lauren A. Frisbie3, Ian Painter, 3, Roy Burstein4, Pavitra Roychoudhury2,5,  Hong Xie5, Shah A. Mohamed Bakhash5, Ricardo Perez5, Maria Lukes5, Sean Ellis5, Saraswathi Sathees5, Patrick C. Mathias,5, Alexander Greninger,2,5, Lea M. Starita6,7, Chris D. Frazar6, Erica Ryke6, Weizhi Zhong7, Luis Gamboa7, Machiko Threlkeld6, Jover Lee2, Deborah A. Nickerson6,7, Daniel L. Bates8, Matthew E. Hartman8,9, Eric Haugen8, Truong N. Nguyen8, Joshua D. Richards8, Jacob L. Rodriguez8, John A. Stamatoyannopoulos8, Eric Thorland8, Geoff Melly3, Philip E. Dykema3, Drew C. MacKellar3, Hannah K. Gray3, Avi Singh3, JohnAric MoonDance Peterson3, Denny Russell3,  Laura Marcela Torres3, Scott Lindquist3, Trevor Bedford1,2,6, Krisandra J. Allen3, Hanna N. Oltean3*
+Miguel I. Paredes*, Stephanie M. Lunn*, Michael Famulare, Lauren A. Frisbie, Ian Painter, Roy Burstein, Pavitra Roychoudhury,  Hong Xie, Shah A. Mohamed Bakhash, Ricardo Perez, Maria Lukes, Sean Ellis, Saraswathi Sathees, Patrick C. Mathias, Alexander Greninger, Lea M. Starita, Chris D. Frazar, Erica Ryke, Weizhi Zhong, Luis Gamboa, Machiko Threlkeld, Jover Lee, Deborah A. Nickerson, Daniel L. Bates, Matthew E. Hartman, Eric Haugen, Truong N. Nguyen, Joshua D. Richards, Jacob L. Rodriguez, John A. Stamatoyannopoulos, Eric Thorland, Geoff Melly, Philip E. Dykema, Drew C. MacKellar, Hannah K. Gray, Avi Singh, JohnAric MoonDance Peterson, Denny Russell,  Laura Marcela Torres, Scott Lindquist, Trevor Bedford, Krisandra J. Allen, Hanna N. Oltean
 
-1 Department of Epidemiology, University of Washington, Seattle, WA, USA
-2 Vaccine and Infectious Disease Division, Fred Hutchinson Cancer Research Center, Seattle, Washington, USA
-3 Washington State Department of Health, Shoreline, WA USA
-4 Institute for Disease Modeling, Bill and Melinda Gates Foundation, Seattle, WA USA
-5 Department of Laboratory Medicine and Pathology, University of Washington, Seattle, WA, USA
-6 Department of Genome Sciences, University of Washington, Seattle, WA, USA
-7 Brotman Baty Institute for Precision Medicine, Seattle, WA USA
-8 Altius Institute for Biomedical Sciences, Seattle, WA USA
-9 Department of Cardiovascular Services, Swedish Medical Center, Seattle, WA USA
-✝These authors contributed equally to this work
+* These authors contributed equally to this work
 
-*Abstract* 
+# Abstract 
 
 _Background_: The COVID-19 pandemic is now dominated by variant lineages; the resulting impact on disease severity remains unclear. Using a retrospective cohort study, we assessed the risk of hospitalization following infection with nine variants of concern or interest (VOC/VOI).
 
