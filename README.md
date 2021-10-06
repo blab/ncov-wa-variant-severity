@@ -14,5 +14,5 @@ _Findings_: Of the 27,814 cases, 23,170 (83.3%) were sequenced through sentinel 
 
 _Interpretation_: Infection with a VOC results in a higher hospitalization risk, with an active vaccination attenuating that risk. Our findings support promoting hospital preparedness, vaccination, and robust genomic surveillance.  
 
-Code:
+# Organization
 While data is not included due to patient privacy concerns, the code contained in this repository represent the analytic code for the above manuscript. If running with data from the Washington Department of Health, please begin by first running `variant_severity_data_prep.R` followed by `variant_exploratory_descriptive_figures.R` before continuing with the other analytic scripts. 
