@@ -2,7 +2,7 @@
 
 Miguel I. Paredes*, Stephanie M. Lunn*, Michael Famulare, Lauren A. Frisbie, Ian Painter, Roy Burstein, Pavitra Roychoudhury,  Hong Xie, Shah A. Mohamed Bakhash, Ricardo Perez, Maria Lukes, Sean Ellis, Saraswathi Sathees, Patrick C. Mathias, Alexander Greninger, Lea M. Starita, Chris D. Frazar, Erica Ryke, Weizhi Zhong, Luis Gamboa, Machiko Threlkeld, Jover Lee, Deborah A. Nickerson, Daniel L. Bates, Matthew E. Hartman, Eric Haugen, Truong N. Nguyen, Joshua D. Richards, Jacob L. Rodriguez, John A. Stamatoyannopoulos, Eric Thorland, Geoff Melly, Philip E. Dykema, Drew C. MacKellar, Hannah K. Gray, Avi Singh, JohnAric MoonDance Peterson, Denny Russell,  Laura Marcela Torres, Scott Lindquist, Trevor Bedford, Krisandra J. Allen, Hanna N. Oltean
 
-* These authors contributed equally to this work
+*These authors contributed equally to this work
 
 # Abstract 
 
