@@ -9,7 +9,8 @@ library(tidyverse)
 library(lubridate)
 
 # load data
-raw <- read.delim('data_pull_2021-09-02.csv',sep=',',header = TRUE)
+raw <- read.delim('data_pull_2021-09-02_prepped.csv',sep=',',header = TRUE)
+# raw <-readRDS("data_pull_2021-09-02_prepped.RDS")
 names(raw)
 
 
@@ -118,18 +119,33 @@ d<-raw
 exclusions <- data.frame(data_view=c(),n_kept=c(),reason=c())
 exclusions <- exclusions %>% rbind(data.frame(data_view='all',reason='raw data',n_kept=nrow(d)))
 
+## removing duplicates 
+d <- d %>% group_by(CASE_ID, CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER) %>% unique() %>% ungroup()
+exclusions <- exclusions %>% rbind(data.frame(data_view='No duplicates',reason='duplicates were created in the data pulling',n_kept=nrow(d)))
+
 sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
-  # drop those with lineage=='None' or no lineage
-  d <- d %>% filter( !(lineage=='None' | is.na(lineage)))
-  exclusions <- exclusions %>% rbind(data.frame(data_view='with_known_lineage',reason='filtered out lineage==None',n_kept=nrow(d)))
+# Excluding poor quality seqs
+exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = TRUE)
 
-  #exclude those with bad sequence quality
-  exclude_seqs <- read.delim('exclusion_ids.csv',sep=',',header = FALSE)
-  d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs))
-  exclusions <- exclusions %>% rbind(data.frame(data_view='good sequence quality',reason='>10% ambiguitiy in sequencing',n_kept=nrow(d)))
-    
+## which ones have bad sequence quality in raw data
+list_bad_quality <- raw %>% filter((raw$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
+sum((d$lineage=='None'),na.rm=TRUE)
+sum(is.na(d$lineage=='None'),na.rm=TRUE)
+
+## drop those with lineage=='None' or no lineage (n=223)
+d <- d %>% filter( !(lineage=='None' | is.na(lineage)))
+exclusions <- exclusions %>% rbind(data.frame(data_view='with_known_lineage',reason='filtered out lineage==None',n_kept=nrow(d)))
+
+# which ones have bad sequence quality now (n=96)
+list_bad_quality_afternone <- d %>% filter((d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
+
+## exclude those with bad sequence quality
+d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
+exclusions <- exclusions %>% rbind(data.frame(data_view='good sequence quality',reason='>10% ambiguity in sequencing',n_kept=nrow(d)))
+list_bad_quality_bad_seq <- d %>% filter((d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs))
+
 ## WHO names
 d$who_lineage <- as.character(d$lineage)
 for(n in names(WHO_names)){
