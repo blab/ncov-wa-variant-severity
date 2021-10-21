@@ -123,8 +123,9 @@ coxph_params <- function(mod,ref,group='who_lineage'){
 
 # hospital sentinel only cox hierarchical model (it's currently filtering out J&J due to sample size)
 cox_dat <- d %>%
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE') %>%
-  select(who_lineage,SEX_AT_BIRTH,age_bin,
+  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection') %>%
+  select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
          mhosp,hosp_days_at_risk, vaccination_active) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
@@ -137,7 +138,6 @@ cox_dat <- d %>%
   ) %>%
   filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)')) %>%
   droplevels()
-
 
 # track which data went into this analysis
 exclusions <- exclusions %>% rbind(data.frame(data_view='all sentinel surveillance and lineages with at least 1 hospitalization',

@@ -9,7 +9,7 @@ library(tidyverse)
 library(lubridate)
 
 # load data
-raw <- read.delim('data_pull_2021-09-02_prepped.csv',sep=',',header = TRUE)
+raw <- read.delim('data_pull_2021-09-02_subset.csv',sep=',',header = TRUE)
 # raw <-readRDS("data_pull_2021-09-02_prepped.RDS")
 names(raw)
 
@@ -118,10 +118,6 @@ d<-raw
 # data.frame for keeping track of exclusions
 exclusions <- data.frame(data_view=c(),n_kept=c(),reason=c())
 exclusions <- exclusions %>% rbind(data.frame(data_view='all',reason='raw data',n_kept=nrow(d)))
-
-## removing duplicates 
-d <- d %>% group_by(CASE_ID, CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER) %>% unique() %>% ungroup()
-exclusions <- exclusions %>% rbind(data.frame(data_view='No duplicates',reason='duplicates were created in the data pulling',n_kept=nrow(d)))
 
 sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
