@@ -10,7 +10,7 @@ library(lubridate)
 
 # load data
 raw <- read.delim('data_pull_2021-09-02_subset.csv',sep=',',header = TRUE)
-# raw <-readRDS("data_pull_2021-09-02_prepped.RDS")
+
 names(raw)
 
 
@@ -125,8 +125,6 @@ sum(is.na(d$lineage=='None'),na.rm=TRUE)
 # Excluding poor quality seqs
 exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = TRUE)
 
-## which ones have bad sequence quality in raw data
-list_bad_quality <- raw %>% filter((raw$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
 sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
@@ -134,8 +132,6 @@ sum(is.na(d$lineage=='None'),na.rm=TRUE)
 d <- d %>% filter( !(lineage=='None' | is.na(lineage)))
 exclusions <- exclusions %>% rbind(data.frame(data_view='with_known_lineage',reason='filtered out lineage==None',n_kept=nrow(d)))
 
-# which ones have bad sequence quality now (n=96)
-list_bad_quality_afternone <- d %>% filter((d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
 
 ## exclude those with bad sequence quality
 d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
@@ -172,9 +168,6 @@ d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2)
 d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date)
 
-d$Discharge_Date_Time[d$Discharge_Date_Time=='none'] <- NA
-d$Discharge_Date_Time <- as.Date(d$Discharge_Date_Time)
-
 d$week_collection <- paste(year(d$collection_date),sprintf('%02d',week(d$collection_date)),sep='-')
 d$week_collection <- factor(d$week_collection, levels=sort(unique(d$week_collection)))
 d$week_collection_number <- as.numeric(d$week_collection)
@@ -196,13 +189,7 @@ d$SEX_AT_BIRTH <- relevel(factor(d$SEX_AT_BIRTH),ref='Female')
 # clean up test date vs collection date
 d$days_between_collection_and_earliest_test <- as.numeric(d$collection_date - d$earliest_positive_test_date)
 
-  # collection date before earliest test date. This shouldn't happen....
-  d %>% filter(d$days_between_collection_and_earliest_test<0) %>%
-    select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,sequence_reason_clean) %>% 
-    arrange(days_between_collection_and_earliest_test) %>% distinct() %>%
-    write.table(file='collection_before_earliest_test.csv',sep=',',row.names = FALSE)
-  
-  # collection date before earliest test date. This shouldn't happen....
+  # collection date before earliest test date. 
   tmp <- d %>% filter(d$days_between_collection_and_earliest_test>=0) %>%
     select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,sequence_reason_clean) %>% 
     arrange(days_between_collection_and_earliest_test) %>% distinct()
@@ -273,7 +260,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='
     select(first_shot,second_shot)
   # all got mRNA
   
-  # gonna lump these into 2 dose mRNA
+  # Seven people marked as having 3 mRNA doses will be considered as 2 mRNA doses
   d$doses_received = d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES
   d$doses_received[compareNA(d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES,3)]=2
   d$doses_received[is.na(d$doses_received)] <- 0
@@ -358,21 +345,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='defined vaccinations ac
   
   # almost all have same lineage
   mean(tmp$count_lineages==1)
-
-  # for ones with same lineage, mostly during obviously the same infection
-  # view(tmp %>% filter(count_lineages==1) %>%
-  #        group_by(days_apart) %>% summarize(n=n()) )
-
-  # also ones with multiple lineages look like the same infection for the most part
-  # view(tmp %>% filter(count_lineages>1) %>%
-  #        group_by(days_apart) %>% summarize(n=n()) )
   
-  
-  # what's going on with multiple lineages in short time?
-  # tmp %>% filter(count_lineages>1) %>%
-  #    select(CASE_ID,lineage,collection_date,sequence_reason_clean) %>%
-  #    view()
-  # these look like a mix of coinfections, reinfections, and pango calling related lineages differently
   # hand label
   multiple_lineage_cases = tmp %>% filter(count_lineages>1) %>% select(CASE_ID) %>% 
     distinct()
@@ -390,18 +363,6 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='defined vaccinations ac
   
   d$infection_type[is.na(d$infection_type)] <- 'monoinfection'
   
-  
-
-  
-  # check that multiples have same metadata
-  # looks good
-  # tmp %>% filter(count_lineages>1) %>% 
-  #   select(CASE_ID,mhosp,DEATH_DATE,ICU_STATUS,MECHANICAL_VENTILATION,age_bin,race) %>%
-  #   view()
-  
-  
-# since only a small amount look like possible reinfections or miscalled lineages, we just drop them
-
 # filter distinct, keeping first one
 d <- d %>% filter(!(CASE_ID %in% multiple_lineage_cases$CASE_ID))
 
@@ -445,22 +406,10 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='first detection in case
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
 d$hosp_days_at_risk[no_hosp_idx] <- as.Date('2021-07-23')-d$collection_date[no_hosp_idx]
 
-# I can't easily do left censored analyses for hospitalizations that precede the collection date
-# but I think it is reasonable to approximate the start of exposure as roughly when infection could start
-# results are insensitive to this choice
 # start time at risk in the 14 days preceding hospitalization or sample collection
 d$hosp_days_at_risk <- d$hosp_days_at_risk + 14
 hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
-
-
-## let's only use data through July 23
-d <- d %>% filter(best_infection_event_date <= '2021-07-23')
-
-exclusions <- exclusions %>% rbind(data.frame(data_view='with best date on or before July 23',
-                                              reason='very incomplete sequencing and outcomes after that',
-                                              n_kept=nrow(d)))
-
 
 ###### add analysis type label field
 exclusions$analysis <- 'all'
