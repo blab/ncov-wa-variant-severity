@@ -136,7 +136,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='with_known_lineage',rea
 ## exclude those with bad sequence quality
 d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
 exclusions <- exclusions %>% rbind(data.frame(data_view='good sequence quality',reason='>10% ambiguity in sequencing',n_kept=nrow(d)))
-list_bad_quality_bad_seq <- d %>% filter((d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs))
+
 
 ## WHO names
 d$who_lineage <- as.character(d$lineage)
