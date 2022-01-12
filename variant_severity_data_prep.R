@@ -67,14 +67,14 @@ WHO_names <- list(B.1.1.7 = 'Alpha (B.1.1.7)',
                   AY.23='Delta (B.1.617.2)',
                   AY.24='Delta (B.1.617.2)',
                   AY.25='Delta (B.1.617.2)',
-                  B.1.617.1='Kappa (B.1.617.1)',
+                  B.1.617.1='Kappa (B.1.617.1)', #only one hosp, consider dropping other_voc_voi
                   B.1.427='Epsilon (B.1.427/B.1.429)',
                   B.1.429='Epsilon (B.1.427/B.1.429)',
                   `B.1.427/429`='Epsilon (B.1.427/B.1.429)',
                   
-                  B.1.526='Iota (B.1.526)',
-                  B.1.525='Eta (B.1.525)',
-                  C.37='Lambda (C.37)',
+                  B.1.526='Iota (B.1.526)', 
+                  B.1.525='Eta (B.1.525)', #only one hosp, consider dropping other_voc_voi
+                  C.37='Lambda (C.37)',   #only one hosp, consider dropping or adding into other_voc_voi
                   
                   # if you want to group these sublineages with the parent,
                   # just change the renaming they are assigned to the parent name above
@@ -166,6 +166,7 @@ d$collection_date <- as.Date(d$collection_date)
 d$admitdate <- as.Date(d$admitdate)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2)
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3)
 d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date)
 
 d$week_collection <- paste(year(d$collection_date),sprintf('%02d',week(d$collection_date)),sep='-')
@@ -246,24 +247,17 @@ d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==207] <- 'Moder
 d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==208] <- 'Pfizer/BioNTech'
 d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==212] <- 'J&J'
 
+d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==207] <- 'Moderna'
+d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==208] <- 'Pfizer/BioNTech'
+d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==212] <- 'J&J'
+
 # drop rows with unknown vaccine type
 d <- d %>% filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1,213)) %>%
   filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2,213))
 exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='unknown vaccine type',n_kept=nrow(d)))
 
 
-# clean up 7 people got third dose
-  sum(d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES==3,na.rm=TRUE)
 
-  #what vaccines did they get for the first two?
-  d %>% filter(compareNA(d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES,3)) %>% 
-    select(first_shot,second_shot)
-  # all got mRNA
-  
-  # Seven people marked as having 3 mRNA doses will be considered as 2 mRNA doses
-  d$doses_received = d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES
-  d$doses_received[compareNA(d$IIS_EVER_RECEIVED_VACCINE_NUM_DOSES,3)]=2
-  d$doses_received[is.na(d$doses_received)] <- 0
   
 # mixed vaccine brands
   d %>% filter(first_shot!=second_shot) %>% nrow()
@@ -271,37 +265,37 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='
   
   d$vaccine_brand=d$first_shot
   d$vaccine_brand[d$first_shot!=d$second_shot] <- 'Mixed'
+  d$vaccine_brand[(d$first_shot == "J&J") & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
   
   d$vaccine_brand[is.na(d$vaccine_brand)] <- 'None'
-  d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J','Mixed','None'))
+  d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J','J&J_mRNA_booster', 'Mixed','None'))
     
-# collapsed vaccine type
-  d$vaccine_type <- as.character(d$vaccine_brand)
-  d$vaccine_type[d$vaccine_type %in% c('Pfizer/BioNTech','Moderna')] <- 'mRNA'
-  d$vaccine_type[d$first_shot %in% c('Pfizer/BioNTech','Moderna') &
-                   d$second_shot %in% c('Pfizer/BioNTech','Moderna')] <- 'mRNA'
-  d$vaccine_type <- relevel(factor(d$vaccine_type),'mRNA')
-  
+
 # vaccine "active" date
 # for analyses of vaccine effectiveness and breakthru, we classify vaccine as 
 # "active" 21 days after administration assuming 14 days for protection against symptoms and 7 more days 
 #for protection against hospitalization
 d$date_first_shot_active_date <- d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 + 21
 d$date_second_shot_active_date <- d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 + 21
+d$date_third_shot_active_date <- d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 + 21
+
   
 # vaccine active binaries. was vaccination active at date of collection?
 d$first_shot_active <- c('No','Yes')[1+as.numeric((d$date_first_shot_active_date - d$best_infection_event_date)<=0)]
 d$second_shot_active <- c('No','Yes')[1+as.numeric((d$date_second_shot_active_date - d$best_infection_event_date)<=0)]
+d$third_shot_active <- c('No','Yes')[1+as.numeric((d$date_third_shot_active_date - d$best_infection_event_date)<=0)]
 
 # is this a first shot breakthru or a second shot breakthru?
 d$first_shot_breakthru <- c('No','Yes')[1+as.numeric((d$first_shot_active=='Yes') & !compareNA(d$second_shot_active,'Yes'))]
 d$second_shot_breakthru <- c('No','Yes')[1+as.numeric((d$second_shot_active=='Yes') )]
+d$third_shot_breakthru <- c('No','Yes')[1+as.numeric((d$third_shot_active=='Yes') )]
 
 # doses active at best_infection_event_date
 d$doses_active <- 0
 d$doses_active[compareNA(d$first_shot_active,'Yes')&!compareNA(d$second_shot_active,'Yes')] <-1
-d$doses_active[compareNA(d$second_shot_active,'Yes')] <-2
- 
+d$doses_active[compareNA(d$second_shot_active,'Yes')&!compareNA(d$second_shot_active,'Yes')] <-2
+d$doses_active[compareNA(d$third_shot_active,'Yes')] <-3
+
 # vaccine brand and dose active at time of collection
 
   # define brand-dose interaction
@@ -315,19 +309,23 @@ d$doses_active[compareNA(d$second_shot_active,'Yes')] <-2
   # order factors
   d$active_vaccine_brand_dose <- factor(d$active_vaccine_brand_dose,
                                         levels=c('None',"Pfizer/BioNTech - dose 1","Moderna - dose 1",
-                                                 "J&J - dose 1","Pfizer/BioNTech - dose 2","Moderna - dose 2","Mixed - dose 2"))  
+                                                 "J&J - dose 1","Pfizer/BioNTech - dose 2","Moderna - dose 2","Mixed - dose 2", "J&J - dose 2", "J&J_mRNA_booster - dose 2","Pfizer/BioNTech - dose 3","Moderna - dose 3","Mixed - dose 3" ))  
   
   
 d$vaccination_active <- NA
 d$vaccination_active <- "No Vaccination to \n <21 days post dose one"
-d$vaccination_active[compareNA(d$first_shot_active,'Yes')] <- "≥21 days post dose one"
-d$vaccination_active <- factor(d$vaccination_active, levels = c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one")) 
+d$vaccination_active[compareNA(d$first_shot_active,'Yes')&!compareNA(d$third_shot_active,'Yes')] <- "≥21 days post dose one to \n <21 days post booster"
+d$vaccination_active[compareNA(d$third_shot_active,'Yes')] <- "≥21 days post booster"
+d$vaccination_active[(d$vaccine_brand == "J&J_mRNA_booster")&compareNA(d$second_shot_active,'Yes')] <- "≥21 days post booster"
+d$vaccination_active <- factor(d$vaccination_active, levels = c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster")) 
+
 
 # exclude active mixed vaccinations since there are few and results can be misleading
-d <- d %>% filter(!grepl('Mixed',active_vaccine_brand_dose)) %>% droplevels()
-exclusions <- exclusions %>% rbind(data.frame(data_view='defined vaccinations active at time of sample (excluding mixed vaccine)',
-                                              reason='exclude mixed vaccinations since there are very few and shrinkage estimators may be pooled misleading close to the most-no-vaccine mean',
-                                              n_kept=nrow(d)))
+##actually let's keep these in for now based on a reviewer comment that these shouldnt be different if we're only doing collapsed categories
+# d <- d %>% filter(!grepl('Mixed',active_vaccine_brand_dose)) %>% droplevels()
+# exclusions <- exclusions %>% rbind(data.frame(data_view='defined vaccinations active at time of sample (excluding mixed vaccine)',
+#                                               reason='exclude mixed vaccinations since there are very few and shrinkage estimators may be pooled misleading close to the most-no-vaccine mean',
+#                                               n_kept=nrow(d)))
   
 # figure out which sample(s) to use for multiples
 # SPECIMEN__COLLECTION__DTTM is most recent
@@ -401,8 +399,8 @@ mean(d$hosp_days_at_risk>=-14,na.rm=TRUE)
 exclusions <- exclusions %>% rbind(data.frame(data_view='first detection in cases with multiple sequences of a single lineage',
                                               reason='no multiple counting and no value in modeling multiple sequences per case',
                                               n_kept=nrow(d)))
-
-# format days at risk for people who haven't been hospitalized
+##### NEED TO UPDATEthey 
+# format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
 d$hosp_days_at_risk[no_hosp_idx] <- as.Date('2021-07-23')-d$collection_date[no_hosp_idx]
 
