@@ -13,6 +13,8 @@ library(coxme)
 library(survival)
 library(lme4)
 library(kableExtra)
+library(survminer)
+library(lmtest)
 
 
 # package:merTools is also required in a function, but not loaded into global namespace since it conflicts with dplyr::Select
@@ -209,6 +211,33 @@ cox_sentinel_vax_rel_risk %>%
              density=600,zoom=3) 
 write.table(cox_sentinel_vax_rel_risk,'output/rich_vaccination/variant_severity_simple_vaccine_relative_risk_hospitalization.csv',sep=',',row.names = FALSE)
 
+##Likelihood ratio test for global effect:
+
+#we already have out main model: cox_sentienl
+
+#now create a reduced model with df -1 by removing the effect that we're interested in, which is variants
+cox_sentinel_test <- coxme(hosp_surv ~  age_bin + (1|SEX_AT_BIRTH) +
+                             (1|vaccination_active), 
+                           data=cox_dat,
+                           x=FALSE,y=FALSE)
+
+#now conduct a LR test
+
+lrtest(cox_sentinel, cox_sentinel_test)
+
+## adding in Kaplan meier curves
+survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
+
+ggsurv <- ggsurvplot(
+  fit = survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat), 
+  ylim = c(0.925, 1),
+  risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
+  
+  legend.labs = c("Ancestral", "Alpha", 'Beta', "Gamma", "Delta", "Kappa", "Epsilon", "Iota", "Eta", "Lambda"))
+
+ggsurv$plot <- ggsurv$plot + 
+  theme(legend.text = element_text(size = 10, face = "bold"),legend.key.height = unit(1, 'cm'), legend.key.width = unit(1, 'cm'))
+ggsurv
 
 ##### Control variables
 # age
@@ -658,3 +687,6 @@ save(cox_sentinel,
      cox_fixed_sentinel_lineage_params,cox_all_lineage_params,pois_all_lineage_params,pois_sentinel_lineage_params,
      cox_fixed_sentinel_vaccine_params,cox_all_vaccine_params,pois_all_vaccine_params,pois_sentinel_vaccine_params,
      file='output/rich_vaccination/cached_models.Rdata')
+
+
+

@@ -36,5 +36,7 @@ with(cox_dat, prop.table(table(vaccination_active, who_lineage),2)) %>% round(2)
 with(cox_dat, chisq.test(table(vaccination_active, who_lineage), correct = FALSE))
 with(cox_dat, table(mhosp, vaccination_active))
 
+#median time to hospialization with IQR by variant. 
+cox_dat %>%  filter(hosp_days_at_risk >0) %>% group_by(who_lineage) %>% summarize(median = median(hosp_days_at_risk), IQR = IQR(hosp_days_at_risk))
 
      
