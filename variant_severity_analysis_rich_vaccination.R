@@ -265,6 +265,23 @@ ggplot() +
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.png',units='in',width=5,height=3,device='png')
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in',width=5,height=3,device='svg')
 
+# race ADDING THIS BACK IN FOR REVIEWERS
+cox_sentinel_race_params <- coxme_random_params(cox_sentinel,cox_dat,group='race')
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_race_params,aes(y=race,x=logRR,xmin=lower95,xmax=upper95)) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_x_continuous(breaks=log(c(1/2,1,2,4)),
+                     labels=(c(1/2,1,2,4))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('risk of hospitalization compared to White') 
+
+ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.svg',units='in',width=5,height=3,device='svg')
+
 # sex
 cox_sentinel_sex_params <- coxme_random_params(cox_sentinel,cox_dat,group='SEX_AT_BIRTH')
 

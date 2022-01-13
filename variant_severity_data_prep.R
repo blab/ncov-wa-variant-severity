@@ -182,6 +182,27 @@ d$mhosp <- factor(d$mhosp, levels=c('No','Yes'))
 d <- d %>% filter(!((mhosp == "Yes")&is.na(admitdate)))
 exclusions <- exclusions %>% rbind(data.frame(data_view='valid admit date',reason='no admitdate for hosp admission',n_kept=nrow(d)))
 
+# make county shorter
+d$COUNTY <- sub(' County','',d$COUNTY)
+d$COUNTY[is.na(d$COUNTY)] <- "Unknown"
+d$COUNTY <- relevel(factor(d$COUNTY),ref='King')
+
+# race as factor
+race_cats <- names(d)[grepl('RACE',names(d))]
+d$race <- NA
+for (r in 1:length(race_cats)){
+  
+  race_idx <- d[,race_cats[r]]=='Y'
+  multiple_idx <- !is.na(d$race)
+  
+  d$race[race_idx & !multiple_idx] <- race_cats[r]
+  d$race[race_idx & multiple_idx] <- 'RACE_MULTIPLE' # define multiple race category
+}
+d$race<-sub('RACE_','',d$race)
+d$race[is.na(d$race)] <- 'UNKNOWN' # code NA as UNKNOWN
+
+d$race<-relevel(factor(str_to_sentence(d$race)),ref='White')
+
 # sex unknown
 d$SEX_AT_BIRTH <- as.character(d$SEX_AT_BIRTH)
 d$SEX_AT_BIRTH[is.na(d$SEX_AT_BIRTH)] <- 'Unknown'
@@ -399,7 +420,7 @@ mean(d$hosp_days_at_risk>=-14,na.rm=TRUE)
 exclusions <- exclusions %>% rbind(data.frame(data_view='first detection in cases with multiple sequences of a single lineage',
                                               reason='no multiple counting and no value in modeling multiple sequences per case',
                                               n_kept=nrow(d)))
-##### NEED TO UPDATEthey 
+##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
 d$hosp_days_at_risk[no_hosp_idx] <- as.Date('2021-07-23')-d$collection_date[no_hosp_idx]
