@@ -133,7 +133,7 @@ names(d)
 # hospital sentinel only cox hierarchical model
 cox_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+           infection_type != 'suspected reinfection' ) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -156,7 +156,7 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_sentinel <- coxme(hosp_surv ~ (1|who_lineage) + 
                         age_bin + (1|SEX_AT_BIRTH) +
-                         (1|vaccination_active), 
+                         (1|vaccination_active) + week_collection_number, 
                       data=cox_dat,
                       x=FALSE,y=FALSE)
 summary(cox_sentinel)
@@ -394,6 +394,106 @@ time_effect_size <- data.frame(model = c('Cox Sentinel VOC/VOI','Cox Sentinel VO
   mutate(effect_size = coef*mean(cox_dat$week_collection_number))
 
 time_effect_size
+
+
+#######################################
+### time from collection to hospitalization 
+
+## 14 day cutoff
+
+cox_dat_14 <- d_14 %>% 
+  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection') %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels()
+
+hosp_surv_14 <- Surv(time=cox_dat_14$hosp_days_at_risk,event=as.numeric(cox_dat_14$mhosp=='Yes'))
+
+
+cox_sentinel_14 <- coxme(hosp_surv_14 ~ (1|who_lineage) + 
+                        age_bin + (1|SEX_AT_BIRTH) +
+                        (1|vaccination_active) + week_collection_number, 
+                      data=cox_dat_14,
+                      x=FALSE,y=FALSE)
+summary(cox_sentinel_14)
+
+cox_sentinel_lineage_params_14 <- coxme_random_params(cox_sentinel_14,cox_dat_14,group='who_lineage')
+
+## 21 day cutoff
+cox_dat_21 <- d_21 %>% 
+  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection') %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels()
+
+hosp_surv_21 <- Surv(time=cox_dat_21$hosp_days_at_risk,event=as.numeric(cox_dat_21$mhosp=='Yes'))
+
+cox_sentinel_21 <- coxme(hosp_surv_21 ~ (1|who_lineage) + 
+                           age_bin + (1|SEX_AT_BIRTH) +
+                           (1|vaccination_active) + week_collection_number, 
+                         data=cox_dat_21,
+                         x=FALSE,y=FALSE)
+summary(cox_sentinel_21)
+
+cox_sentinel_lineage_params_21 <- coxme_random_params(cox_sentinel_21,cox_dat_21,group='who_lineage')
+
+
+cox_dat_30 <- d_30 %>% 
+  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection') %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels()
+
+hosp_surv_30 <- Surv(time=cox_dat_30$hosp_days_at_risk,event=as.numeric(cox_dat_30$mhosp=='Yes'))
+
+
+cox_sentinel_30 <- coxme(hosp_surv_30 ~ (1|who_lineage) + 
+                           age_bin + (1|SEX_AT_BIRTH) +
+                           (1|vaccination_active) + week_collection_number, 
+                         data=cox_dat_30,
+                         x=FALSE,y=FALSE)
+summary(cox_sentinel_30)
+
+cox_sentinel_lineage_params_30 <- coxme_random_params(cox_sentinel_30,cox_dat_30,group='who_lineage')
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95)) +
+  geom_pointrange(data=cox_sentinel_lineage_params_14,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95),color='blue') +
+  geom_pointrange(data=cox_sentinel_lineage_params_21,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95),color='red') +
+  geom_pointrange(data=cox_sentinel_lineage_params_30,aes(y=as.numeric(who_lineage)-0.3,x=logRR,xmin=lower95,xmax=upper95),color='green') +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
+
+ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_hosp_time_cutoff_sensitivity.png',units='in',width=7,height=4,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_hosp_time_cutoff_sensitivity.svg',units='in',width=7,height=4,device='svg')
 
 ########################################
 ### fixed vs hierarchical vs poisson

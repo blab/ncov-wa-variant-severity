@@ -262,17 +262,21 @@ d$infection_type <- NA
 # vaccine type per shot
 d$first_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1==207] <- 'Moderna'
 d$first_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1==208] <- 'Pfizer/BioNTech'
+d$first_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1==217] <- 'Pfizer/BioNTech'
 d$first_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1==212] <- 'J&J'
 
 d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==207] <- 'Moderna'
 d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==208] <- 'Pfizer/BioNTech'
+d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==217] <- 'Pfizer/BioNTech'
 d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==212] <- 'J&J'
 
 d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==207] <- 'Moderna'
 d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==208] <- 'Pfizer/BioNTech'
+d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==217] <- 'Pfizer/BioNTech'
 d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==212] <- 'J&J'
 
-# drop rows with unknown vaccine type
+# drop rows with unknown vaccine type 
+### Miguel's thoughts: if we're just doing vaccinated/unvaccinated, maybe we can include these people back in?  
 d <- d %>% filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1,213)) %>%
   filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2,213))
 exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='unknown vaccine type',n_kept=nrow(d)))
@@ -420,15 +424,46 @@ mean(d$hosp_days_at_risk>=-14,na.rm=TRUE)
 exclusions <- exclusions %>% rbind(data.frame(data_view='first detection in cases with multiple sequences of a single lineage',
                                               reason='no multiple counting and no value in modeling multiple sequences per case',
                                               n_kept=nrow(d)))
+
+
+#creating datasets for sens analysis where we limit time between collection and hosp to 14,21,30 days
+hist(d$hosp_days_at_risk)
+mean(d$hosp_days_at_risk>=0,na.rm=TRUE)
+mean(d$hosp_days_at_risk>=-14,na.rm=TRUE)
+
+d %>% filter(!is.na(hosp_days_at_risk)) %>% summarize(range = range(hosp_days_at_risk))
+d %>% filter(!is.na(hosp_days_at_risk)) %>% count()
+
+
+
+d_14 <- d %>% filter(!compareNA(hosp_days_at_risk,14,test='>'))
+hist(d_14$hosp_days_at_risk)
+d_14 %>% filter(!is.na(hosp_days_at_risk)) %>% summarize(range = range(hosp_days_at_risk))
+d_14_count <- d_14 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
+
+d_21 <- d %>% filter(!compareNA(hosp_days_at_risk,21,test='>'))
+hist(d_21$hosp_days_at_risk)
+d_21 %>% filter(!is.na(hosp_days_at_risk)) %>% summarize(range = range(hosp_days_at_risk))
+d_21_count <- d_21 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
+
+
+d_30 <- d %>% filter(!compareNA(hosp_days_at_risk,30,test='>'))
+hist(d_30$hosp_days_at_risk)
+d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% summarize(range = range(hosp_days_at_risk))
+d_30_count <- d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
+
+
 ##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
 d$hosp_days_at_risk[no_hosp_idx] <- as.Date('2021-07-23')-d$collection_date[no_hosp_idx]
 
+
 # start time at risk in the 14 days preceding hospitalization or sample collection
 d$hosp_days_at_risk <- d$hosp_days_at_risk + 14
 hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
+
 
 ###### add analysis type label field
 exclusions$analysis <- 'all'
@@ -439,3 +474,34 @@ write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',r
 
 
 
+#doing the same for the 14,21,30 day datasets
+
+# format days at risk for people who haven't been hospitalized 
+no_hosp_idx_14 <- is.na(d_14$hosp_days_at_risk)
+d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('2021-07-23')-d_14$collection_date[no_hosp_idx_14]
+
+
+# start time at risk in the 14 days preceding hospitalization or sample collection
+d_14$hosp_days_at_risk <- d_14$hosp_days_at_risk + 14
+hist(d_14$hosp_days_at_risk)
+hist(d_14$hosp_days_at_risk[d_14$mhosp=='Yes'])
+
+# format days at risk for people who haven't been hospitalized 
+no_hosp_idx_21 <- is.na(d_21$hosp_days_at_risk)
+d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('2021-07-23')-d_21$collection_date[no_hosp_idx_21]
+
+
+# start time at risk in the 14 days preceding hospitalization or sample collection
+d_21$hosp_days_at_risk <- d_21$hosp_days_at_risk + 14
+hist(d_21$hosp_days_at_risk)
+hist(d_21$hosp_days_at_risk[d_21$mhosp=='Yes'])
+
+# format days at risk for people who haven't been hospitalized 
+no_hosp_idx_30 <- is.na(d_30$hosp_days_at_risk)
+d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('2021-07-23')-d_30$collection_date[no_hosp_idx_30]
+
+
+# start time at risk in the 14 days preceding hospitalization or sample collection
+d_30$hosp_days_at_risk <- d_30$hosp_days_at_risk + 14
+hist(d_30$hosp_days_at_risk)
+hist(d_30$hosp_days_at_risk[d_30$mhosp=='Yes'])
