@@ -121,12 +121,12 @@ coxph_params <- function(mod,ref,group='who_lineage'){
 ############# hierarchical cox model
 ############# vaccination with rich model of vaccine type and variant
 
-# hospital sentinel only cox hierarchical model (it's currently filtering out J&J due to sample size)
+# hospital sentinel only cox hierarchical model 
 cox_dat <- d %>%
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>%
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
-         mhosp,hosp_days_at_risk, vaccination_active) %>%
+         mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
@@ -136,7 +136,7 @@ cox_dat <- d %>%
                                                         who_lineage,
                                                         sep=' : ')
   ) %>%
-  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)')) %>%
+  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)')) %>% #Will need to hardcode omicron in 
   droplevels()
 
 # track which data went into this analysis
@@ -150,7 +150,7 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_sentinel <- coxme(hosp_surv ~
                         (1|active_vaccine_type_dose_lineage) +
-                        age_bin + (1|SEX_AT_BIRTH),
+                        age_bin + (1|SEX_AT_BIRTH) + week_collection_number,
                       data=cox_dat,
                       x=FALSE,y=FALSE)
 summary(cox_sentinel)

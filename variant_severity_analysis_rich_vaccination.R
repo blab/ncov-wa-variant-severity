@@ -131,9 +131,10 @@ names(d)
 ############# vaccination with rich model of vaccine type and variant
 
 # hospital sentinel only cox hierarchical model
+## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' ) %>% 
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -225,7 +226,8 @@ cox_sentinel_test <- coxme(hosp_surv ~  age_bin + (1|SEX_AT_BIRTH) +
 
 lrtest(cox_sentinel, cox_sentinel_test)
 
-## adding in Kaplan meier curves
+## adding in Kaplan meier curves 
+#### NEED TO HARDCODE OMICRON IN WHEN WE UPDATE DATA
 survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
 
 ggsurv <- ggsurvplot(
@@ -266,6 +268,7 @@ ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.png',units='in'
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in',width=5,height=3,device='svg')
 
 # race ADDING THIS BACK IN FOR REVIEWERS
+#### For it to work, we need to add Race back into the model. If not, this will throw an error
 cox_sentinel_race_params <- coxme_random_params(cox_sentinel,cox_dat,group='race')
 
 ggplot() +
@@ -319,20 +322,20 @@ vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number']
 
 cox_sentinel_time_only_vaccine_params <- coxme_random_params(cox_sentinel_time_only,cox_dat,group='vaccination_active')
 
-# variant and time
-cox_sentinel_voc_and_time <- coxme(hosp_surv ~ (1|who_lineage) + 
+# variant and NO time
+cox_sentinel_voc_and_no_time <- coxme(hosp_surv ~ (1|who_lineage) + 
                                      age_bin + (1|SEX_AT_BIRTH) +
-                                     (1|vaccination_active) + week_collection_number, 
+                                     (1|vaccination_active) , 
                                    data=cox_dat,
                                    x=FALSE,y=FALSE)
-summary(cox_sentinel_voc_and_time)
+summary(cox_sentinel_voc_and_no_time)
 
-coef(cox_sentinel_voc_and_time)['week_collection_number']
-vcov(cox_sentinel_voc_and_time)['week_collection_number','week_collection_number']
+coef(cox_sentinel_voc_and_no_time)['week_collection_number']
+vcov(cox_sentinel_voc_and_no_time)['week_collection_number','week_collection_number']
 
 
-cox_sentinel_voc_and_time_vaccine_params <- coxme_random_params(cox_sentinel_voc_and_time,cox_dat,group='vaccination_active')
-cox_sentinel_voc_and_time_lineage_params <- coxme_random_params(cox_sentinel_voc_and_time,cox_dat,group='who_lineage')
+cox_sentinel_voc_and_no_time_vaccine_params <- coxme_random_params(cox_sentinel_voc_and_no_time,cox_dat,group='vaccination_active')
+cox_sentinel_voc_and_no_time_lineage_params <- coxme_random_params(cox_sentinel_voc_and_no_time,cox_dat,group='who_lineage')
 
 
 # risk reduction of hospitalization from vaccine
@@ -340,7 +343,7 @@ cox_sentinel_voc_and_time_lineage_params <- coxme_random_params(cox_sentinel_voc
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_color_manual(values=c('black','gray','cornflowerblue'),
                      breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)','Cox Sentinel (time only)'),
@@ -360,8 +363,8 @@ ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_voc_and_tim
 
 
 ggplot() +
-  geom_pointrange(data=cox_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
   geom_pointrange(data=cox_sentinel_time_only_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (time only)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_color_manual(values=c('black','gray','cornflowerblue'),
@@ -386,8 +389,8 @@ ggsave('output/rich_vaccination/case_hospitalization_vaccine_relRisk_time_sensit
 # around 80% of the time effect disappears when you include variant, as expected. 
 
 time_effect_size <- data.frame(model = c('Cox Sentinel VOC/VOI','Cox Sentinel VOC/VOI & time','Cox Sentinel time only'),
-                               coef=c(NA,coef(cox_sentinel_voc_and_time)['week_collection_number'],coef(cox_sentinel_time_only)['week_collection_number']),
-                               se=c(NA,vcov(cox_sentinel_voc_and_time)['week_collection_number','week_collection_number'],vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number'])) %>%
+                               coef=c(NA,coef(cox_sentinel)['week_collection_number'],coef(cox_sentinel_time_only)['week_collection_number']),
+                               se=c(NA,vcov(cox_sentinel)['week_collection_number','week_collection_number'],vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number'])) %>%
   mutate(z = coef/se) %>%
   mutate(coeff_fraction_after_mediation = coef/coef[3]) %>%
   mutate(z_fraction_after_mediation = z/z[3]) %>%
@@ -403,7 +406,7 @@ time_effect_size
 
 cox_dat_14 <- d_14 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -429,7 +432,7 @@ cox_sentinel_lineage_params_14 <- coxme_random_params(cox_sentinel_14,cox_dat_14
 ## 21 day cutoff
 cox_dat_21 <- d_21 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -454,7 +457,7 @@ cox_sentinel_lineage_params_21 <- coxme_random_params(cox_sentinel_21,cox_dat_21
 
 cox_dat_30 <- d_30 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -547,7 +550,7 @@ ggplot() +
 
 # hospitalization all samples
 cox_dat <- d %>% 
-  filter(infection_type != 'suspected reinfection' ) %>% # can toggle to look at reinfection
+  filter(infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes" ) %>% # can toggle to look at reinfection
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk,
          vaccination_active) %>%
@@ -614,7 +617,7 @@ ggplot() +
 # hospitalization sentinel samples
 pois_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>%
+           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,
          vaccination_active, 
@@ -680,7 +683,7 @@ ggplot() +
 # hospitalization all samples
 pois_dat <- d %>% 
   # filter(sequence_reason_clean=='SENTINEL SURVEILLANCE') %>%
-  filter(infection_type != 'suspected reinfection') %>% # can toggle to include reinfections
+  filter(infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% # can toggle to include reinfections
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp, week_collection_number,
          vaccination_active) %>%
