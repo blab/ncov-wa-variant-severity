@@ -22,7 +22,7 @@ names(raw)
 
 # https://www.who.int/en/activities/tracking-SARS-CoV-2-variants/
 # https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/variant-surveillance/variant-info.html
-WHO_names <- list(B.1.1.7 = 'Alpha',
+WHO_names <- list(B.1.1.7 = 'Alpha (B.1.1.7)',
                   Q.1 = 'Alpha (B.1.1.7)',
                   Q.2 = "Alpha (B.1.1.7)",
                   Q.3 = "Alpha (B.1.1.7)",
@@ -253,8 +253,8 @@ WHO_names <- list(B.1.1.7 = 'Alpha',
                   AY.99.1 = "Delta (B.1.617.2)",
                   AY.99.2 = "Delta (B.1.617.2)",
                   B.1.617.2 = "Delta (B.1.617.2)",
-                  B.1.427 = "Epsilon (B.1.427)",
-                  B.1.429 = "Epsilon (B.1.429)",
+                  B.1.427 = "Epsilon (B.1.427/B.1.429)",
+                  B.1.429 = "Epsilon (B.1.427/B.1.429)",
                   B.1.525 = "Eta (B.1.525)",
                   P.1 = "Gamma (P.1)",
                   P.1.1 = "Gamma (P.1)",
@@ -362,6 +362,8 @@ d$who_lineage[!(d$who_lineage %in% WHO_names)] <- 'other'
 d$who_lineage <- factor(d$who_lineage,levels=unique(WHO_names))
 d$who_lineage <- relevel(d$who_lineage,ref='other')
 
+#format AGE_YEARS to numeric
+d$AGE_YEARS <- as.numeric(d$AGE_YEARS)
 
 # age bin
 # include >99 in the 90-99 age bracket 
@@ -374,12 +376,15 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='valid ages',reason='mis
 
 
 # dates
-d$collection_date <- as.Date(d$collection_date)
-d$admitdate <- as.Date(d$admitdate)
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1)
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2)
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3)
-d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date)
+d$collection_date <- as.Date(d$collection_date, format = "%m/%d/%Y")
+####
+#ASK STEPH TO CHECK ADMITDATE 
+####
+d$admitdate <- as.Date(d$admitdate, format = "%m/%d/%Y")
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1, format = "%m/%d/%Y")
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2, format = "%m/%d/%Y")
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3, format = "%m/%d/%Y")
+d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date, format = "%m/%d/%Y")
 
 d$week_collection <- paste(year(d$collection_date),sprintf('%02d',week(d$collection_date)),sep='-')
 d$week_collection <- factor(d$week_collection, levels=sort(unique(d$week_collection)))
@@ -556,6 +561,7 @@ d$vaccination_active[compareNA(d$third_shot_active,'Yes')] <- "≥21 days post b
 d$vaccination_active[(d$vaccine_brand == "J&J_mRNA_booster")&compareNA(d$second_shot_active,'Yes')] <- "≥21 days post booster"
 d$vaccination_active <- factor(d$vaccination_active, levels = c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster")) 
 
+with(d, table(vaccination_active,active_vaccine_brand_dose, useNA = "ifany")) #check recoding
 
 # exclude active mixed vaccinations since there are few and results can be misleading
 ##actually let's keep these in for now based on a reviewer comment that these shouldnt be different if we're only doing collapsed categories
@@ -668,13 +674,15 @@ d_30_count <- d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
 ##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
-d$hosp_days_at_risk[no_hosp_idx] <- as.Date('2021-07-23')-d$collection_date[no_hosp_idx]
+d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/17/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
 d$hosp_days_at_risk <- d$hosp_days_at_risk + 14
 hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
+
+weird_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
 
 
 ###### add analysis type label field
@@ -690,7 +698,7 @@ write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',r
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_14 <- is.na(d_14$hosp_days_at_risk)
-d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('2021-07-23')-d_14$collection_date[no_hosp_idx_14]
+d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('01/17/2022', format = "%m/%d/%Y")-d_14$collection_date[no_hosp_idx_14]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -700,7 +708,7 @@ hist(d_14$hosp_days_at_risk[d_14$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_21 <- is.na(d_21$hosp_days_at_risk)
-d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('2021-07-23')-d_21$collection_date[no_hosp_idx_21]
+d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('01/17/2022', format = "%m/%d/%Y")-d_21$collection_date[no_hosp_idx_21]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -710,7 +718,7 @@ hist(d_21$hosp_days_at_risk[d_21$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_30 <- is.na(d_30$hosp_days_at_risk)
-d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('2021-07-23')-d_30$collection_date[no_hosp_idx_30]
+d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/17/2022', format = "%m/%d/%Y")-d_30$collection_date[no_hosp_idx_30]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
