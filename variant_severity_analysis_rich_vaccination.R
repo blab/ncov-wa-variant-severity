@@ -218,7 +218,7 @@ write.table(cox_sentinel_vax_rel_risk,'output/rich_vaccination/variant_severity_
 
 #now create a reduced model with df -1 by removing the effect that we're interested in, which is variants
 cox_sentinel_test <- coxme(hosp_surv ~  age_bin + (1|SEX_AT_BIRTH) +
-                             (1|vaccination_active), 
+                             (1|vaccination_active) + week_collection_number, 
                            data=cox_dat,
                            x=FALSE,y=FALSE)
 
@@ -482,11 +482,14 @@ cox_sentinel_lineage_params_30 <- coxme_random_params(cox_sentinel_30,cox_dat_30
 
 
 ggplot() +
-  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95)) +
-  geom_pointrange(data=cox_sentinel_lineage_params_14,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95),color='blue') +
-  geom_pointrange(data=cox_sentinel_lineage_params_21,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95),color='red') +
-  geom_pointrange(data=cox_sentinel_lineage_params_30,aes(y=as.numeric(who_lineage)-0.3,x=logRR,xmin=lower95,xmax=upper95),color='green') +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95, color = 'Cox Sentinel (no filter)')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_14,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='14 day')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_21,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95,color='21 day')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_30,aes(y=as.numeric(who_lineage)-0.3,x=logRR,xmin=lower95,xmax=upper95,color='30 day')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray','cornflowerblue','forestgreen'),
+                     breaks=c('Cox Sentinel (no filter)','14 day','21 day','30 day'),
+                     name=' Max Time from Collection to Hosp') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
   theme_bw() +
