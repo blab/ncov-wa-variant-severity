@@ -134,7 +134,8 @@ names(d)
 ## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
+           infection_type != 'suspected reinfection' & 
+           REINFECTION_FLAG != "Yes") %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -235,11 +236,13 @@ ggsurv <- ggsurvplot(
   ylim = c(0.925, 1),
   risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
   
-  legend.labs = c("Ancestral", "Alpha", 'Beta', "Gamma", "Delta", "Kappa", "Epsilon", "Iota", "Eta", "Lambda"))
+  legend.labs = c("Ancestral", "Alpha", 'Beta', "Gamma", "Delta", "Kappa", "Epsilon", "Iota", "Eta", "Lambda", "Zeta", "Omicron"))
 
 ggsurv$plot <- ggsurv$plot + 
   theme(legend.text = element_text(size = 10, face = "bold"),legend.key.height = unit(1, 'cm'), legend.key.width = unit(1, 'cm'))
 ggsurv
+
+ggsave('output/rich_vaccination/km_curves.png',units='in',width=5,height=3,device='png')
 
 ##### Control variables
 # age
