@@ -136,7 +136,7 @@ cox_dat <- d %>%
                                                         who_lineage,
                                                         sep=' : ')
   ) %>%
-  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)')) %>% #Will need to hardcode omicron in 
+  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)', "Omicron (B.1.1.529)")) %>% #Will need to hardcode omicron in 
   droplevels()
 
 # track which data went into this analysis
@@ -161,6 +161,7 @@ cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(cox_sentin
 cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose,
                                                                levels=c("No Vaccination to \n <21 days post dose one","≥21 days post dose one"))
 lineage_names <- c(
+  `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)",
   `Gamma (P.1)`="Gamma (P.1)",
   `Delta (B.1.617.2)`="Delta (B.1.617.2)",
   `Alpha (B.1.1.7)`="Alpha (B.1.1.7)",
