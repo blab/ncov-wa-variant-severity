@@ -73,9 +73,9 @@ cox_dat <- d %>%
   ggplot() +
     geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95,color=who_lineage)) +
     geom_vline(aes(xintercept=0),linetype='dashed') +
-    scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16)),
-                       labels=(c(1/8,1/4,1/2,1,2,4,8,16)),
-                       limits=log(c(1/2,9))) +
+    scale_x_continuous(breaks=log(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                       labels=(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                       limits=log(c(1/32,9))) +
     scale_color_manual(values=cmap,guide=FALSE) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),

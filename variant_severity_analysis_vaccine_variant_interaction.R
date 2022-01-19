@@ -124,7 +124,7 @@ coxph_params <- function(mod,ref,group='who_lineage'){
 # hospital sentinel only cox hierarchical model 
 cox_dat <- d %>%
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>%
+           infection_type != 'suspected reinfection' &is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
          mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%
   # drop lineages with no hospitalization outcomes
@@ -156,10 +156,7 @@ cox_sentinel <- coxme(hosp_surv ~
 summary(cox_sentinel)
 
 cox_sentinel_lineage_params <- coxme_random_params(cox_sentinel,cox_dat,group='active_vaccine_type_dose_lineage', by_lineage=FALSE) # by_lineage flag make "none" the reference for each variant
-cox_sentinel_lineage_params$active_vaccine_type_dose <- as.character(cox_sentinel_lineage_params$active_vaccine_type_dose)
-cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(cox_sentinel_lineage_params$active_vaccine_type_dose_lineage != "≥21 days post dose one : other")
-cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose,
-                                                               levels=c("No Vaccination to \n <21 days post dose one","≥21 days post dose one"))
+
 lineage_names <- c(
   `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)",
   `Gamma (P.1)`="Gamma (P.1)",

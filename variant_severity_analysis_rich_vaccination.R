@@ -125,7 +125,7 @@ glmer_random_params <- function(mod,ref, group='who_lineage'){
 ######################################
 
 names(d)
-
+d$REINFECTION_FLAG <- as.character(d$REINFECTION_FLAG)
 ############# PRIMARY ANALYSIS. Case-Hospitalization ratio in sentinel surveillance
 ############# hierarchical cox model
 ############# vaccination with rich model of vaccine type and variant
@@ -135,10 +135,10 @@ names(d)
 cox_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & 
-           REINFECTION_FLAG != "Yes") %>% 
+           is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
-         vaccination_active,week_collection_number) %>%
+         vaccination_active,week_collection_number, race) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
@@ -228,7 +228,7 @@ cox_sentinel_test <- coxme(hosp_surv ~  age_bin + (1|SEX_AT_BIRTH) +
 lrtest(cox_sentinel, cox_sentinel_test)
 
 ## adding in Kaplan meier curves 
-#### NEED TO HARDCODE OMICRON IN WHEN WE UPDATE DATA
+#### always make sure to check labels since the legend is hardcoded in
 survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
 
 ggsurv <- ggsurvplot(
@@ -236,7 +236,7 @@ ggsurv <- ggsurvplot(
   ylim = c(0.925, 1),
   risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
   
-  legend.labs = c("Ancestral", "Alpha", 'Beta', "Gamma", "Delta", "Kappa", "Epsilon", "Iota", "Eta", "Lambda", "Zeta", "Omicron"))
+  legend.labs = c("Ancestral", "Alpha", 'Beta',"Delta", "Epsilon","Eta", "Gamma", "Iota", "Kappa",   "Lambda", "Omicron"))
 
 ggsurv$plot <- ggsurv$plot + 
   theme(legend.text = element_text(size = 10, face = "bold"),legend.key.height = unit(1, 'cm'), legend.key.width = unit(1, 'cm'))
@@ -271,8 +271,16 @@ ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.png',units='in'
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in',width=5,height=3,device='svg')
 
 # race ADDING THIS BACK IN FOR REVIEWERS
-#### For it to work, we need to add Race back into the model. If not, this will throw an error
-cox_sentinel_race_params <- coxme_random_params(cox_sentinel,cox_dat,group='race')
+#### 
+
+cox_sentinel_race <- coxme(hosp_surv ~ (1|who_lineage) + 
+                        age_bin + (1|SEX_AT_BIRTH) +
+                        (1|vaccination_active) + week_collection_number + race, 
+                      data=cox_dat,
+                      x=FALSE,y=FALSE)
+summary(cox_sentinel_race)
+
+cox_sentinel_race_params <- coxme_random_params(cox_sentinel_race,cox_dat,group='race')
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_race_params,aes(y=race,x=logRR,xmin=lower95,xmax=upper95)) +
@@ -409,7 +417,7 @@ time_effect_size
 
 cox_dat_14 <- d_14 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -435,7 +443,7 @@ cox_sentinel_lineage_params_14 <- coxme_random_params(cox_sentinel_14,cox_dat_14
 ## 21 day cutoff
 cox_dat_21 <- d_21 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -460,7 +468,7 @@ cox_sentinel_lineage_params_21 <- coxme_random_params(cox_sentinel_21,cox_dat_21
 
 cox_dat_30 <- d_30 %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% 
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -517,7 +525,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sentinel surveillan
 
 cox_fixed_sentinel <- coxph(hosp_surv ~ who_lineage + 
                               age_bin + SEX_AT_BIRTH +
-                              vaccination_active,
+                              vaccination_active +week_collection_number,
                             data=cox_dat,
                             x=FALSE,y=FALSE)
 summary(cox_fixed_sentinel)
@@ -556,7 +564,7 @@ ggplot() +
 
 # hospitalization all samples
 cox_dat <- d %>% 
-  filter(infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes" ) %>% # can toggle to look at reinfection
+  filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG) ) %>% # can toggle to look at reinfection
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk,
          vaccination_active) %>%
@@ -577,7 +585,7 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_all <- coxme(hosp_surv ~ (1|who_lineage) + 
                    age_bin + (1|SEX_AT_BIRTH) +
-                   (1|vaccination_active),
+                   (1|vaccination_active) + week_collection_number,
                  data=cox_dat,
                  x=FALSE,y=FALSE)
 summary(cox_all)
@@ -623,7 +631,7 @@ ggplot() +
 # hospitalization sentinel samples
 pois_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>%
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,
          vaccination_active, 
@@ -645,7 +653,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sentinel surveillan
 
 pois_sentinel <- glmer(n_hosp ~ (1|who_lineage) + log(offset(cases)) + 
                          age_bin + (1|SEX_AT_BIRTH) +
-                         (1|vaccination_active),
+                         (1|vaccination_active) +week_collection_number,
                        data=pois_dat,
                        family='poisson')
 summary(pois_sentinel)
@@ -689,7 +697,7 @@ ggplot() +
 # hospitalization all samples
 pois_dat <- d %>% 
   # filter(sequence_reason_clean=='SENTINEL SURVEILLANCE') %>%
-  filter(infection_type != 'suspected reinfection' & REINFECTION_FLAG != "Yes") %>% # can toggle to include reinfections
+  filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% # can toggle to include reinfections
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp, week_collection_number,
          vaccination_active) %>%
@@ -708,7 +716,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and linea
 
 pois_all <- glmer(n_hosp ~ (1|who_lineage) + log(offset(cases)) + 
                     age_bin + (1|SEX_AT_BIRTH) + 
-                    (1|vaccination_active),
+                    (1|vaccination_active) +week_collection_number,
                   data=pois_dat,
                   family='poisson')
 summary(pois_all)
