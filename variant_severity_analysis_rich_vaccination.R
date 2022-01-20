@@ -374,7 +374,7 @@ ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_voc_and_tim
 
 
 ggplot() +
-  geom_pointrange(data=,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
+  geom_pointrange(data=cox_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
   geom_pointrange(data=cox_sentinel_voc_and_no_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
   geom_pointrange(data=cox_sentinel_time_only_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (time only)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
