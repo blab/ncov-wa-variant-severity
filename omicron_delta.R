@@ -44,7 +44,7 @@ coxme_random_params <- function(mod,data,group='who_lineage'){
 cox_dat <- d %>% 
   filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' ) %>% 
-  select(who_lineage,SEX_AT_BIRTH,age_bin,
+  select(who_lineage, collection_date, SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
   # drop lineages with no hospitalization outcomes
@@ -53,7 +53,8 @@ cox_dat <- d %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
   droplevels()
-  
+
+  cox_dat <- cox_dat %>% filter(collection_date >= "2021-09-01")
   cox_dat <- cox_dat %>% filter(who_lineage %in% c('Delta (B.1.617.2)', "Omicron (B.1.1.529)"))
   cox_dat$who_lineage <- factor(cox_dat$who_lineage,levels=c('Delta (B.1.617.2)', "Omicron (B.1.1.529)"))
   cox_dat$who_lineage <- relevel(cox_dat$who_lineage,ref='Delta (B.1.617.2)')
