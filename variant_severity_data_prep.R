@@ -430,7 +430,7 @@ d$days_between_collection_and_earliest_test <- as.numeric(d$collection_date - d$
 
   # collection date before earliest test date. 
   tmp <- d %>% filter(d$days_between_collection_and_earliest_test>=0) %>%
-    select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,sequence_reason_clean) %>% 
+    select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,CDC_N_COV_2019_SEQUENCE_REASON) %>% 
     arrange(days_between_collection_and_earliest_test) %>% distinct()
   
   # collection date well after earliest date, mostly reinfections
@@ -439,7 +439,7 @@ d$days_between_collection_and_earliest_test <- as.numeric(d$collection_date - d$
     scale_y_continuous(trans='log10') + ylab('cumulative distribution')
   
   d %>% filter(d$days_between_collection_and_earliest_test>21) %>%
-    select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,sequence_reason_clean) %>% 
+    select(CASE_ID,days_between_collection_and_earliest_test,collection_date,earliest_positive_test_date,CDC_N_COV_2019_SEQUENCE_REASON) %>% 
     arrange(days_between_collection_and_earliest_test) %>% distinct() %>%
     write.table(file='collection_21+_days_after_earliest_test.csv',sep=',',row.names = FALSE)
 
@@ -599,7 +599,7 @@ with(d, table(vaccination_active,active_vaccine_brand_dose, useNA = "ifany")) #c
   d$infection_type[idx] <- 'possible coinfection or miscalled lineage'
   
   # included suspected reinfections
-  idx <- d$sequence_reason_clean == 'SUSPECTED REINFECTION'
+  idx <- d$CDC_N_COV_2019_SEQUENCE_REASON == 'SUSPECTED REINFECTION'
   d$infection_type[idx] <- 'suspected reinfection'
   
   d$infection_type[is.na(d$infection_type)] <- 'monoinfection'

@@ -133,7 +133,7 @@ d$REINFECTION_FLAG <- as.character(d$REINFECTION_FLAG)
 # hospital sentinel only cox hierarchical model
 ## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & 
            is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
@@ -416,7 +416,7 @@ time_effect_size
 ## 14 day cutoff
 
 cox_dat_14 <- d_14 %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
@@ -442,7 +442,7 @@ cox_sentinel_lineage_params_14 <- coxme_random_params(cox_sentinel_14,cox_dat_14
 
 ## 21 day cutoff
 cox_dat_21 <- d_21 %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
@@ -467,7 +467,7 @@ cox_sentinel_lineage_params_21 <- coxme_random_params(cox_sentinel_21,cox_dat_21
 
 
 cox_dat_30 <- d_30 %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
@@ -630,7 +630,7 @@ ggplot() +
 # SENSITIVITY POISSON REGRESSION
 # hospitalization sentinel samples
 pois_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,
@@ -696,7 +696,7 @@ ggplot() +
 # SENSITIVITY POISSON REGRESSION
 # hospitalization all samples
 pois_dat <- d %>% 
-  # filter(sequence_reason_clean=='SENTINEL SURVEILLANCE') %>%
+  # filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE') %>%
   filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% # can toggle to include reinfections
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp, week_collection_number,

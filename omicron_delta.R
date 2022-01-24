@@ -42,7 +42,7 @@ coxme_random_params <- function(mod,data,group='who_lineage'){
 
 
 cox_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' ) %>% 
   select(who_lineage, collection_date, SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
@@ -225,7 +225,7 @@ cox_dat <- d %>%
   }
   
   cox_dat <- d %>%
-    filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+    filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
              infection_type != 'suspected reinfection') %>%
     select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
            mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%

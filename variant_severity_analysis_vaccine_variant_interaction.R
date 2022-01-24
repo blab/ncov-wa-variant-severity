@@ -123,7 +123,7 @@ coxph_params <- function(mod,ref,group='who_lineage'){
 
 # hospital sentinel only cox hierarchical model 
 cox_dat <- d %>%
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' &is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
          mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%
