@@ -334,7 +334,7 @@ sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
 # Excluding poor quality seqs
-exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = TRUE)
+exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = FALSE)
 #exclude_seqs <- read.delim('Y:/Confidential/DCHS/CDE/Zoonoses/Molecular/COVID/Analysis Projects/Variant severity analysis/exclusion_ids_lf.csv',sep=',',header = TRUE)
 
 sum((d$lineage=='None'),na.rm=TRUE)
@@ -346,7 +346,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='with_known_lineage',rea
 
 
 ## exclude those with bad sequence quality
-d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$ID))
+d <- d %>%  filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% exclude_seqs$V1))
 exclusions <- exclusions %>% rbind(data.frame(data_view='good sequence quality',reason='>10% ambiguity in sequencing',n_kept=nrow(d)))
 
 
@@ -376,11 +376,11 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='valid ages',reason='mis
 
 
 # dates
-d$collection_date <- as.Date(d$collection_date, format = "%m/%d/%Y")
+d$collection_date <- as.Date(d$collection_date)
 ####
 #ASK STEPH TO CHECK ADMITDATE 
 ####
-d$admitdate <- as.Date(d$admitdate, format = "%m/%d/%Y")
+d$admitdate <- as.Date(d$admitdate)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1, format = "%m/%d/%Y")
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2, format = "%m/%d/%Y")
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3, format = "%m/%d/%Y")
@@ -688,6 +688,9 @@ weird_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
 ###### add analysis type label field
 exclusions$analysis <- 'all'
 
+d <- d %>% filter(best_infection_event_date <= '2022-01-11')
+
+exclusions <- exclusions %>% rbind(data.frame(data_view='with best date on or before Jan11', reason='very incomplete sequencing and outcomes after that', n_kept=nrow(d)))
 
 ## write out data process
 write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',row.names=FALSE)
@@ -725,3 +728,7 @@ d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/05/2022', format = "%m/%d/
 d_30$hosp_days_at_risk <- d_30$hosp_days_at_risk + 14
 hist(d_30$hosp_days_at_risk)
 hist(d_30$hosp_days_at_risk[d_30$mhosp=='Yes'])
+
+d_14 <- d_14 %>% filter(best_infection_event_date <= '2022-01-11')
+d_21 <- d_21 %>% filter(best_infection_event_date <= '2022-01-11')
+d_30 <- d_30 %>% filter(best_infection_event_date <= '2022-01-11')

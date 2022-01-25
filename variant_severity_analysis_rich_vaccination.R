@@ -353,11 +353,13 @@ cox_sentinel_voc_and_no_time_lineage_params <- coxme_random_params(cox_sentinel_
 
 
 ggplot() +
-  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI)')) +
+  
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_color_manual(values=c('black','gray','cornflowerblue'),
-                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)','Cox Sentinel (time only)'),
+                     breaks=c('Cox Sentinel (VOC/VOI & time)','Cox Sentinel (VOC/VOI)', 'Cox Sentinel (time only)'),
                      name='Model') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
@@ -376,10 +378,9 @@ ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_voc_and_tim
 ggplot() +
   geom_pointrange(data=cox_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
   geom_pointrange(data=cox_sentinel_voc_and_no_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
-  geom_pointrange(data=cox_sentinel_time_only_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (time only)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
-  scale_color_manual(values=c('black','gray','cornflowerblue'),
-                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)','Cox Sentinel (time only)'),
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)'),
                      name='Model') +
   scale_x_continuous(breaks=log(c(1/16, 1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
