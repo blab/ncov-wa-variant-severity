@@ -554,6 +554,7 @@ d$doses_active[compareNA(d$third_shot_active,'Yes')] <-3
                                         levels=c('None',"Pfizer/BioNTech - dose 1","Moderna - dose 1",
                                                  "J&J - dose 1","Pfizer/BioNTech - dose 2","Moderna - dose 2","Mixed - dose 2", "J&J - dose 2", "J&J_mRNA_booster - dose 2","Pfizer/BioNTech - dose 3","Moderna - dose 3","Mixed - dose 3" ))  
   
+with(d, table(vaccine_brand,active_vaccine_brand_dose, useNA = "ifany")) #check recoding  
   
 d$vaccination_active <- NA
 d$vaccination_active <- "No Vaccination to \n <21 days post dose one"
