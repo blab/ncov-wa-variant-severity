@@ -40,10 +40,9 @@ coxme_random_params <- function(mod,data,group='who_lineage'){
   return(res)
 }
 
-
+### this adds reinfections back in 
 cox_dat <- d %>% 
-  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection' ) %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' ) %>% 
   select(who_lineage, collection_date, SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number) %>%
@@ -150,6 +149,64 @@ cox_dat <- d %>%
   ggsave('output/rich_vaccination/omicron_delta_km_curves.png',units='in',width=5,height=3,device='png')
   
   
+  #########
+  ### Sensitivity for reinfections
+  
+  cox_dat_no_re <- d %>% 
+    filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+             infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
+    select(who_lineage, collection_date, SEX_AT_BIRTH,age_bin,
+           mhosp,hosp_days_at_risk, vaccination_active,
+           vaccination_active,week_collection_number) %>%
+    # drop lineages with no hospitalization outcomes
+    group_by(who_lineage) %>%
+    mutate(n_hosp = sum(mhosp=='Yes')) %>%
+    filter(n_hosp>0) %>%
+    ungroup() %>%
+    droplevels()
+  
+  cox_dat_no_re <- cox_dat_no_re %>% filter(collection_date >= "2021-09-01")
+  cox_dat_no_re <- cox_dat_no_re %>% filter(who_lineage %in% c('Delta (B.1.617.2)', "Omicron (B.1.1.529)"))
+  cox_dat_no_re$who_lineage <- factor(cox_dat_no_re$who_lineage,levels=c('Delta (B.1.617.2)', "Omicron (B.1.1.529)"))
+  cox_dat_no_re$who_lineage <- relevel(cox_dat_no_re$who_lineage,ref='Delta (B.1.617.2)')
+  
+  hosp_surv <- Surv(time=cox_dat_no_re$hosp_days_at_risk,event=as.numeric(cox_dat_no_re$mhosp=='Yes'))
+  
+  cox_sentinel_no_re <- coxme(hosp_surv ~ (1|who_lineage) + 
+                          age_bin + (1|SEX_AT_BIRTH) +
+                          (1|vaccination_active) + week_collection_number , 
+                        data=cox_dat_no_re,
+                        x=FALSE,y=FALSE)
+  summary(cox_sentinel_no_re)
+  
+  cox_sentinel_lineage_params_no_re <- coxme_random_params(cox_sentinel_no_re,cox_dat_no_re,group='who_lineage')
+  
+  
+  ggplot() +
+    geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95,color="Reinfections included")) +
+    geom_pointrange(data=cox_sentinel_lineage_params_no_re,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Reinfections excluded')) +
+        geom_vline(aes(xintercept=0),linetype='dashed') +
+    scale_color_manual(values=c('black','cornflowerblue'),
+                       breaks=c("Reinfections included",'Reinfections excluded'),
+                       name=' reinfections sens') +
+    scale_x_continuous(breaks=log(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                       labels=(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                       limits=log(c(1/32,9))) +
+    scale_color_manual(values=cmap,guide=FALSE) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+          panel.grid.minor.y = element_blank()) +
+    ylab('') +
+    xlab('hazard ratio for hospitalization') 
+  
+  ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.png',units='in',width=5,height=3,device='png')
+  ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.svg',units='in',width=5,height=3,device='svg')
+  
+  
+  
+  
+  
+  
  ###############
 #vaccine facet for delta/omicron
   
@@ -223,10 +280,9 @@ cox_dat <- d %>%
     
     return(res)
   }
-  
+  ###think about whether to add or exclude reinfections
   cox_dat <- d %>%
-    filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
-             infection_type != 'suspected reinfection') %>%
+    filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' ) %>%
     select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
            mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%
     # drop lineages with no hospitalization outcomes

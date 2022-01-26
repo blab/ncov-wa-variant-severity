@@ -133,8 +133,8 @@ d$REINFECTION_FLAG <- as.character(d$REINFECTION_FLAG)
 # hospital sentinel only cox hierarchical model
 ## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection'  & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number, race) %>%
@@ -238,7 +238,7 @@ ggsurv <- ggsurvplot(
   legend.labs = c("Ancestral", "Alpha", 'Beta',"Delta", "Epsilon","Eta", "Gamma", "Iota", "Kappa",   "Lambda", "Mu", "Omicron"))
 
 ggsurv$plot <- ggsurv$plot + 
-  theme(legend.text = element_text(size = 7, face = "bold"),legend.key.height = unit(1, 'cm'), legend.key.width = unit(0.5, 'cm'))
+  theme(legend.text = element_text(size = 7, face = "bold"),legend.key.height = unit(0.75, 'cm'), legend.key.width = unit(0.5, 'cm'))
 ggsurv
 
 ggsave('output/rich_vaccination/km_curves.png',units='in',width=5,height=3,device='png')

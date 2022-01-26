@@ -335,7 +335,7 @@ sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
 # Excluding poor quality seqs
 exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = FALSE)
-#exclude_seqs <- read.delim('Y:/Confidential/DCHS/CDE/Zoonoses/Molecular/COVID/Analysis Projects/Variant severity analysis/exclusion_ids_lf.csv',sep=',',header = TRUE)
+
 
 sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
@@ -381,10 +381,10 @@ d$collection_date <- as.Date(d$collection_date)
 #ASK STEPH TO CHECK ADMITDATE 
 ####
 d$admitdate <- as.Date(d$admitdate)
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1, format = "%m/%d/%Y")
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2, format = "%m/%d/%Y")
-d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3, format = "%m/%d/%Y")
-d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date, format = "%m/%d/%Y")
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1)
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2)
+d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3)
+d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date)
 
 d$week_collection <- paste(year(d$collection_date),sprintf('%02d',week(d$collection_date)),sep='-')
 d$week_collection <- factor(d$week_collection, levels=sort(unique(d$week_collection)))
@@ -507,10 +507,11 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='
   
   d$vaccine_brand=d$first_shot
   d$vaccine_brand[d$first_shot!=d$second_shot] <- 'Mixed'
-  d$vaccine_brand[(d$first_shot == "J&J") & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
+  d$vaccine_brand[(d$first_shot %in% 'J&J') & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
+  d[d$vaccine_brand == "J&J_mRNA_booster"]
   
   d$vaccine_brand[is.na(d$vaccine_brand)] <- 'None'
-  d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J','J&J_mRNA_booster', 'Mixed','None'))
+  d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J', 'Mixed', 'J&J_mRNA_booster','None'))
     
 
 # vaccine "active" date
@@ -535,7 +536,7 @@ d$third_shot_breakthru <- c('No','Yes')[1+as.numeric((d$third_shot_active=='Yes'
 # doses active at best_infection_event_date
 d$doses_active <- 0
 d$doses_active[compareNA(d$first_shot_active,'Yes')&!compareNA(d$second_shot_active,'Yes')] <-1
-d$doses_active[compareNA(d$second_shot_active,'Yes')&!compareNA(d$second_shot_active,'Yes')] <-2
+d$doses_active[compareNA(d$second_shot_active,'Yes')&!compareNA(d$third_shot_active,'Yes')] <-2
 d$doses_active[compareNA(d$third_shot_active,'Yes')] <-3
 
 # vaccine brand and dose active at time of collection
