@@ -143,7 +143,8 @@ cox_dat <- d %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 
 # track which data went into this analysis
@@ -235,7 +236,7 @@ ggsurv <- ggsurvplot(
   ylim = c(0.925, 1),
  # risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
   
-  legend.labs = c("Ancestral", "Alpha", 'Beta',"Delta", "Epsilon","Eta", "Gamma", "Iota", "Kappa",   "Lambda", "Mu", "Omicron"))
+  legend.labs = c("Ancestral", "Alpha", 'Beta',"Delta", "Epsilon", "Gamma", "Iota", "Omicron"))
 
 ggsurv$plot <- ggsurv$plot + 
   theme(legend.text = element_text(size = 7, face = "bold"),legend.key.height = unit(0.75, 'cm'), legend.key.width = unit(0.5, 'cm'))
@@ -354,8 +355,6 @@ cox_sentinel_voc_and_no_time_lineage_params <- coxme_random_params(cox_sentinel_
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI & time)')) +
   geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI)')) +
-  
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_color_manual(values=c('black','gray','cornflowerblue'),
                      breaks=c('Cox Sentinel (VOC/VOI & time)','Cox Sentinel (VOC/VOI)', 'Cox Sentinel (time only)'),
@@ -426,7 +425,8 @@ cox_dat_14 <- d_14 %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 hosp_surv_14 <- Surv(time=cox_dat_14$hosp_days_at_risk,event=as.numeric(cox_dat_14$mhosp=='Yes'))
 
@@ -452,7 +452,8 @@ cox_dat_21 <- d_21 %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 hosp_surv_21 <- Surv(time=cox_dat_21$hosp_days_at_risk,event=as.numeric(cox_dat_21$mhosp=='Yes'))
 
@@ -477,7 +478,8 @@ cox_dat_30 <- d_30 %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 hosp_surv_30 <- Surv(time=cox_dat_30$hosp_days_at_risk,event=as.numeric(cox_dat_30$mhosp=='Yes'))
 
@@ -573,7 +575,8 @@ cox_dat <- d %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and lineages with at least 1 hospitalization except suspected reinfections',
                                               reason='sensitivity analysis',
@@ -641,7 +644,8 @@ pois_dat <- d %>%
   summarize(n_hosp = sum(mhosp=='Yes'),
             cases=n()) %>%
   filter(who_lineage %in% c('other',levels(cox_sentinel_lineage_params$who_lineage))) %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 sum(pois_dat$cases)
 
@@ -706,7 +710,8 @@ pois_dat <- d %>%
   summarize(n_hosp = sum(mhosp=='Yes'),
             cases=n()) %>%
   filter(who_lineage %in% c('other',levels(cox_sentinel_lineage_params$who_lineage))) %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and lineages with at least 1 hospitalization except suspected reinfections',
                                               reason='sensitivity analysis',
