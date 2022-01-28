@@ -134,7 +134,7 @@ d$REINFECTION_FLAG <- as.character(d$REINFECTION_FLAG)
 ## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
   filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection'  & is.na(REINFECTION_FLAG)) %>% 
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
          vaccination_active,week_collection_number, race) %>%
@@ -171,7 +171,7 @@ ggplot() +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8,16)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   scale_color_manual(values=cmap,guide=FALSE) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
@@ -275,12 +275,30 @@ ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in'
 
 cox_sentinel_race <- coxme(hosp_surv ~ (1|who_lineage) + 
                         age_bin + (1|SEX_AT_BIRTH) +
-                        (1|vaccination_active) + week_collection_number + race, 
+                        (1|vaccination_active) + week_collection_number + (1|race), 
                       data=cox_dat,
                       x=FALSE,y=FALSE)
 summary(cox_sentinel_race)
 
+cox_sentinel_race_lineage_params <- coxme_random_params(cox_sentinel_race,cox_dat,group='who_lineage')
 cox_sentinel_race_params <- coxme_random_params(cox_sentinel_race,cox_dat,group='race')
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no race)')) +
+  geom_pointrange(data=cox_sentinel_race_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (race)')) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (no race)','Cox Sentinel (race)'),
+                     name='Model') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  scale_y_continuous(breaks=1:length(cox_sentinel_lineage_params$who_lineage),
+                     labels=levels(cox_sentinel_lineage_params$who_lineage))+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_race_params,aes(y=race,x=logRR,xmin=lower95,xmax=upper95)) +
@@ -601,7 +619,7 @@ ggplot() +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -671,7 +689,7 @@ ggplot() +
   geom_jitter() +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -737,7 +755,7 @@ ggplot() +
                      name='Model') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ylab('') +

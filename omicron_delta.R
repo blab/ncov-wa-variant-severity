@@ -138,7 +138,7 @@ cox_dat <- d %>%
   ggsurv <- ggsurvplot(
     fit = survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat), 
     ylim = c(0.925, 1),
-    risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
+   ## risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
     
     legend.labs = c( "Delta", "Omicron"))
   
@@ -183,12 +183,12 @@ cox_dat <- d %>%
   
   
   ggplot() +
-    geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95,color="Reinfections included")) +
+    geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95,color='Reinfections included')) +
     geom_pointrange(data=cox_sentinel_lineage_params_no_re,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Reinfections excluded')) +
         geom_vline(aes(xintercept=0),linetype='dashed') +
     scale_color_manual(values=c('black','cornflowerblue'),
-                       breaks=c("Reinfections included",'Reinfections excluded'),
-                       name=' reinfections sens') +
+                       breaks=c('Reinfections included','Reinfections excluded'),
+                       name='reinfections sens') +
     scale_x_continuous(breaks=log(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
                        labels=(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
                        limits=log(c(1/32,9))) +
@@ -201,9 +201,6 @@ cox_dat <- d %>%
   
   ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.png',units='in',width=5,height=3,device='png')
   ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.svg',units='in',width=5,height=3,device='svg')
-  
-  
-  
   
   
   
@@ -328,7 +325,7 @@ cox_dat <- d %>%
     scale_color_manual(values=cmap, guide=FALSE)+
     scale_x_continuous(breaks=log(c(1/32, 1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
                        labels=(c(1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
-                       limits=log(c(1/24,16))) +
+                       limits=log(c(1/32,16))) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           panel.grid.minor.y = element_blank(),
