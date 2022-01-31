@@ -137,7 +137,7 @@ cox_dat <- d %>%
            infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
-         vaccination_active,week_collection_number, race) %>%
+         vaccination_active,week_collection_number, race, COUNTY) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
@@ -299,6 +299,9 @@ ggplot() +
         panel.grid.minor.y = element_blank()) +
   ylab('') +
   xlab('hazard ratio for hospitalization') 
+ggsave('output/rich_vaccination/case_hospitalization_race_sens.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_race_sens.svg',units='in',width=5,height=3,device='svg')
+
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_race_params,aes(y=race,x=logRR,xmin=lower95,xmax=upper95)) +
@@ -313,6 +316,53 @@ ggplot() +
 
 ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.png',units='in',width=5,height=3,device='png')
 ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.svg',units='in',width=5,height=3,device='svg')
+
+# county ADDING THIS BACK IN FOR REVIEWERS
+#### 
+
+cox_sentinel_county <- coxme(hosp_surv ~ (1|who_lineage) + 
+                             age_bin + (1|SEX_AT_BIRTH) +
+                             (1|vaccination_active) + week_collection_number + (1|COUNTY), 
+                           data=cox_dat,
+                           x=FALSE,y=FALSE)
+summary(cox_sentinel_county)
+
+cox_sentinel_county_lineage_params <- coxme_random_params(cox_sentinel_county,cox_dat,group='who_lineage')
+cox_sentinel_county_params <- coxme_random_params(cox_sentinel_county,cox_dat,group='COUNTY')
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no county)')) +
+  geom_pointrange(data=cox_sentinel_county_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (county)')) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (no county)','Cox Sentinel (county)'),
+                     name='Model') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  scale_y_continuous(breaks=1:length(cox_sentinel_lineage_params$who_lineage),
+                     labels=levels(cox_sentinel_lineage_params$who_lineage))+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
+ggsave('output/rich_vaccination/case_hospitalization_county_sens.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_county_sens.svg',units='in',width=5,height=3,device='svg')
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_county_params,aes(y=COUNTY,x=logRR,xmin=lower95,xmax=upper95)) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_x_continuous(breaks=log(c(1/2,1,2,4)),
+                     labels=(c(1/2,1,2,4))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('risk of hospitalization compared to King county') 
+
+ggsave('output/rich_vaccination/case_hospitalization_county_relRisk.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_county_relRisk.svg',units='in',width=5,height=3,device='svg')
 
 # sex
 cox_sentinel_sex_params <- coxme_random_params(cox_sentinel,cox_dat,group='SEX_AT_BIRTH')
@@ -587,7 +637,7 @@ cox_dat <- d %>%
   filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG) ) %>% # can toggle to look at reinfection
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk,
-         vaccination_active) %>%
+         vaccination_active, week_collection_number) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
@@ -704,9 +754,9 @@ ggplot() +
   geom_pointrange(data=pois_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95),color='red') +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   geom_jitter() +
-  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
-                     labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/16,2))) +
+  scale_x_continuous(breaks=log(c(1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                     labels=(c(1/16, 1/8,1/4,1/2,1,2,4,8,16)),
+                     limits=log(c(1/16,8))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -753,9 +803,9 @@ ggplot() +
   scale_color_manual(values=c('black','cornflowerblue','orangered','forestgreen'),
                      breaks=c('Cox Sentinel','Cox All','Poisson Sentinel','Poisson All'),
                      name='Model') +
-  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
-                     labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/4,9))) +
+  scale_x_continuous(breaks=log(c(1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                     labels=(c(1/16, 1/8,1/4,1/2,1,2,4,8,16)),
+                     limits=log(c(1/16,8))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ylab('') +

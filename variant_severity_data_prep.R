@@ -7,7 +7,6 @@
 
 library(tidyverse)
 library(lubridate)
-
 # load data
 raw <- read.delim('data_pull_2021-09-02_subset.csv',sep=',',header = TRUE)
 
@@ -334,7 +333,7 @@ sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
 # Excluding poor quality seqs
-exclude_seqs <- read.delim('exclusion_ids_lf.csv',sep=',',header = FALSE)
+exclude_seqs <- read.delim('exclusions.csv',sep=',',header = FALSE)
 
 
 sum((d$lineage=='None'),na.rm=TRUE)
@@ -507,8 +506,10 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='
   
   d$vaccine_brand=d$first_shot
   d$vaccine_brand[d$first_shot!=d$second_shot] <- 'Mixed'
-  d$vaccine_brand[(d$first_shot %in% 'J&J') & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
-  d[d$vaccine_brand == "J&J_mRNA_booster"]
+  d$vaccine_brand[compareNA(d$first_shot, 'J&J') & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
+  test <-d[compareNA(d$vaccine_brand, "J&J_mRNA_booster"), ]
+  
+  view(test)
   
   d$vaccine_brand[is.na(d$vaccine_brand)] <- 'None'
   d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J', 'Mixed', 'J&J_mRNA_booster','None'))
@@ -676,7 +677,7 @@ d_30_count <- d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
 ##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
-d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/05/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
+d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -690,9 +691,6 @@ weird_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
 ###### add analysis type label field
 exclusions$analysis <- 'all'
 
-d <- d %>% filter(best_infection_event_date <= '2022-01-11')
-
-exclusions <- exclusions %>% rbind(data.frame(data_view='with best date on or before Jan11', reason='very incomplete sequencing and outcomes after that', n_kept=nrow(d)))
 
 ## write out data process
 write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',row.names=FALSE)
@@ -703,7 +701,7 @@ write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',r
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_14 <- is.na(d_14$hosp_days_at_risk)
-d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('01/05/2022', format = "%m/%d/%Y")-d_14$collection_date[no_hosp_idx_14]
+d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_14$collection_date[no_hosp_idx_14]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -713,7 +711,7 @@ hist(d_14$hosp_days_at_risk[d_14$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_21 <- is.na(d_21$hosp_days_at_risk)
-d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('01/05/2022', format = "%m/%d/%Y")-d_21$collection_date[no_hosp_idx_21]
+d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_21$collection_date[no_hosp_idx_21]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -723,7 +721,7 @@ hist(d_21$hosp_days_at_risk[d_21$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_30 <- is.na(d_30$hosp_days_at_risk)
-d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/05/2022', format = "%m/%d/%Y")-d_30$collection_date[no_hosp_idx_30]
+d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_30$collection_date[no_hosp_idx_30]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -731,6 +729,4 @@ d_30$hosp_days_at_risk <- d_30$hosp_days_at_risk + 14
 hist(d_30$hosp_days_at_risk)
 hist(d_30$hosp_days_at_risk[d_30$mhosp=='Yes'])
 
-d_14 <- d_14 %>% filter(best_infection_event_date <= '2022-01-11')
-d_21 <- d_21 %>% filter(best_infection_event_date <= '2022-01-11')
-d_30 <- d_30 %>% filter(best_infection_event_date <= '2022-01-11')
+
