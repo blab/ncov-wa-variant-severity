@@ -186,3 +186,11 @@ ggsave('output/rich_vaccination/case_hospitalization_vaccine_variant_interaction
 save(cox_sentinel, cox_sentinel_lineage_params,
      file='output/cached_variant_models.Rdata')
 
+
+hosp_by_variant_vaccine <- with(cox_dat, table(mhosp, active_vaccine_type_dose_lineage))
+
+hosp_by_variant_vaccine %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/hosp_by_variant_and_vaccine.png",
+             density=600,zoom=3) 

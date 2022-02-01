@@ -93,7 +93,7 @@ glmer_random_params <- function(mod,ref, group='who_lineage'){
   if(group=='who_lineage'){
     ref_set =  c('other',levels(ref$who_lineage))
   } else if (group == 'vaccination_active'){
-    ref_set =  c('No',levels(ref$vaccination_active))
+    ref_set =  c('No Vaccination to \n <21 days post dose one',levels(ref$vaccination_active))
   }
   res<-merTools::REextract(mod)
   res <- res %>% filter(rownames(res) %in% ref_set)
@@ -229,7 +229,12 @@ lrtest(cox_sentinel, cox_sentinel_test)
 
 ## adding in Kaplan meier curves 
 #### always make sure to check labels since the legend is hardcoded in
-survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
+hosp_counts <- survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
+hosp_counts %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/cases_and_hosps.png",
+             density=600,zoom=3) 
 
 ggsurv <- ggsurvplot(
   fit = survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat), 
@@ -793,6 +798,12 @@ pois_all <- glmer(n_hosp ~ (1|who_lineage) + log(offset(cases)) +
                   data=pois_dat,
                   family='poisson')
 summary(pois_all)
+
+pois_all %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/pois_all_summary.png",
+             density=600,zoom=3) 
 
 pois_all_lineage_params <- glmer_random_params(pois_all,cox_sentinel_lineage_params)
 
