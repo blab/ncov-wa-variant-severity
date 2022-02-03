@@ -9,6 +9,7 @@ library(tidyverse)
 library(lubridate)
 library(kableExtra)
 # load data
+##### CHANGE THIS TO REFLECT MOST RECENT DATA PULL
 raw <- read.delim('data_pull_2021-09-02_subset.csv',sep=',',header = TRUE)
 
 names(raw)
@@ -509,9 +510,9 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='
   d$vaccine_brand=d$first_shot
   d$vaccine_brand[d$first_shot!=d$second_shot] <- 'Mixed'
   d$vaccine_brand[compareNA(d$first_shot, 'J&J') & (d$second_shot %in% c('Pfizer/BioNTech','Moderna'))] <- "J&J_mRNA_booster"
-  test <-d[compareNA(d$vaccine_brand, "J&J_mRNA_booster"), ]
+
   
-  view(test)
+
   
   d$vaccine_brand[is.na(d$vaccine_brand)] <- 'None'
   d$vaccine_brand <- factor(d$vaccine_brand,levels=c('Moderna','Pfizer/BioNTech','J&J', 'Mixed', 'J&J_mRNA_booster','None'))
@@ -563,7 +564,7 @@ d$vaccination_active <- NA
 d$vaccination_active <- "No Vaccination to \n <21 days post dose one"
 d$vaccination_active[compareNA(d$first_shot_active,'Yes')&!compareNA(d$third_shot_active,'Yes')] <- "≥21 days post dose one to \n <21 days post booster"
 d$vaccination_active[compareNA(d$third_shot_active,'Yes')] <- "≥21 days post booster"
-d$vaccination_active[(d$vaccine_brand == "J&J_mRNA_booster")&compareNA(d$second_shot_active,'Yes')] <- "≥21 days post booster"
+d$vaccination_active[compareNA(d$vaccine_brand,'J&J_mRNA_booster')&compareNA(d$second_shot_active,'Yes')] <- "≥21 days post booster"
 d$vaccination_active <- factor(d$vaccination_active, levels = c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster")) 
 
 vaccine_recoding <- with(d, table(vaccination_active,active_vaccine_brand_dose, useNA = "ifany")) #check recoding
@@ -573,6 +574,8 @@ vaccine_recoding %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
   save_kable(file = "output/vaccine_recoding.png",
              density=600,zoom=3) 
+write.table(vaccine_recoding,'output/rich_vaccination/vaccine_recoding.csv',sep=',',row.names = FALSE)
+
 
 # exclude active mixed vaccinations since there are few and results can be misleading
 ##actually let's keep these in for now based on a reviewer comment that these shouldnt be different if we're only doing collapsed categories

@@ -235,6 +235,7 @@ hosp_counts %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
   save_kable(file = "output/rich_vaccination/cases_and_hosps.png",
              density=600,zoom=3) 
+write.table(hosp_counts,'output/rich_vaccination/variant_severity_cases_and_hosp.csv',sep=',',row.names = FALSE)
 
 ggsurv <- ggsurvplot(
   fit = survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat), 
@@ -278,15 +279,15 @@ ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in'
 # race ADDING THIS BACK IN FOR REVIEWERS
 #### 
 
-cox_sentinel_race <- coxme(hosp_surv ~ (1|who_lineage) + 
+cox_sentinel_race_and_county <- coxme(hosp_surv ~ (1|who_lineage) + 
                         age_bin + (1|SEX_AT_BIRTH) +
-                        (1|vaccination_active) + week_collection_number + (1|race), 
+                        (1|vaccination_active) + week_collection_number + (1|race) + (1|COUNTY), 
                       data=cox_dat,
                       x=FALSE,y=FALSE)
-summary(cox_sentinel_race)
+summary(cox_sentinel_race_and_county)
 
-cox_sentinel_race_lineage_params <- coxme_random_params(cox_sentinel_race,cox_dat,group='who_lineage')
-cox_sentinel_race_params <- coxme_random_params(cox_sentinel_race,cox_dat,group='race')
+cox_sentinel_race_lineage_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='who_lineage')
+cox_sentinel_race_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='race')
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no race)')) +
@@ -325,15 +326,9 @@ ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.svg',units='in
 # county ADDING THIS BACK IN FOR REVIEWERS
 #### 
 
-cox_sentinel_county <- coxme(hosp_surv ~ (1|who_lineage) + 
-                             age_bin + (1|SEX_AT_BIRTH) +
-                             (1|vaccination_active) + week_collection_number + (1|COUNTY), 
-                           data=cox_dat,
-                           x=FALSE,y=FALSE)
-summary(cox_sentinel_county)
 
-cox_sentinel_county_lineage_params <- coxme_random_params(cox_sentinel_county,cox_dat,group='who_lineage')
-cox_sentinel_county_params <- coxme_random_params(cox_sentinel_county,cox_dat,group='COUNTY')
+cox_sentinel_county_lineage_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='who_lineage')
+cox_sentinel_county_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='COUNTY')
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no county)')) +

@@ -194,3 +194,4 @@ hosp_by_variant_vaccine %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
   save_kable(file = "output/rich_vaccination/hosp_by_variant_and_vaccine.png",
              density=600,zoom=3) 
+write.table(hosp_by_variant_vaccine,'output/rich_vaccination/hosp_by_variant_and_vaccine.csv',sep=',',row.names = FALSE)
