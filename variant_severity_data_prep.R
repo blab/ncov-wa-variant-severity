@@ -688,7 +688,7 @@ d_30_count <- d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
 ##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
-d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
+d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/21/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -697,6 +697,15 @@ hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
 
 weird_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
+
+incorrect_lineage <- data.frame(exclude = c('USA/WA-CDC-UW21050153778/2021', 'USA/WA-UW-21050578561/2021', 'USA/WA-CDC-UW21060839220/2021'))
+
+d <- d %>% filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% incorrect_lineage$exclude))
+
+
+exclusions <- exclusions %>% rbind(data.frame(data_view='correct GISAID lineage assignment',
+                                              reason='exclude cases assigned as omicron by GISAID with impossible collection dates',
+                                              n_kept=nrow(d)))
 
 
 ###### add analysis type label field
@@ -712,7 +721,7 @@ write.table(exclusions,'output/sample_size_and_exclusions_summary.csv',sep=',',r
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_14 <- is.na(d_14$hosp_days_at_risk)
-d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_14$collection_date[no_hosp_idx_14]
+d_14$hosp_days_at_risk[no_hosp_idx_14] <- as.Date('01/21/2022', format = "%m/%d/%Y")-d_14$collection_date[no_hosp_idx_14]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -722,7 +731,7 @@ hist(d_14$hosp_days_at_risk[d_14$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_21 <- is.na(d_21$hosp_days_at_risk)
-d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_21$collection_date[no_hosp_idx_21]
+d_21$hosp_days_at_risk[no_hosp_idx_21] <- as.Date('01/21/2022', format = "%m/%d/%Y")-d_21$collection_date[no_hosp_idx_21]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
@@ -732,7 +741,7 @@ hist(d_21$hosp_days_at_risk[d_21$mhosp=='Yes'])
 
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx_30 <- is.na(d_30$hosp_days_at_risk)
-d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d_30$collection_date[no_hosp_idx_30]
+d_30$hosp_days_at_risk[no_hosp_idx_30] <- as.Date('01/21/2022', format = "%m/%d/%Y")-d_30$collection_date[no_hosp_idx_30]
 
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
