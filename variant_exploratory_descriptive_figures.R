@@ -52,7 +52,9 @@ sum(d$MECHANICAL_VENTILATION=="Yes",na.rm=TRUE)
 
 ## variant fraction running average
 
-plot_dat <- d %>% 
+des_d <- d %>% filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
+
+plot_dat <- des_d %>% 
   select(best_infection_event_date,who_lineage) %>%
   group_by(best_infection_event_date,who_lineage) %>%
   summarize(variant_count=n()) %>%
