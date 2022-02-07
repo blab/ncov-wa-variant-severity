@@ -75,7 +75,7 @@ plot_dat<-plot_dat %>% group_by(who_lineage) %>%
   drop_na() %>%
   group_by(best_infection_event_date) %>%
   mutate(running_average=running_average/sum(running_average)) %>% 
-  mutate(who_lineage=factor(who_lineage,levels=levels(d$who_lineage))) %>%
+  mutate(who_lineage=factor(who_lineage,levels=levels(des_d$who_lineage))) %>%
   droplevels() 
 
 # area plot
