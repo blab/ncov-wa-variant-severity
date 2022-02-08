@@ -126,7 +126,7 @@ cox_dat <- d %>%
   filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
            infection_type != 'suspected reinfection' &is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
-         mhosp,hosp_days_at_risk, vaccination_active, week_collection_number) %>%
+         mhosp,hosp_days_at_risk, vaccination_active, week_collection_number, CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
