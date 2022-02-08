@@ -201,7 +201,10 @@ cox_dat <- d %>%
   
   ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.png',units='in',width=5,height=3,device='png')
   ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_variant_relRisk_reinfection_sens.svg',units='in',width=5,height=3,device='svg')
+ 
   
+  save(cox_sentinel, cox_sentinel_lineage_params,
+       file='output/omicron_delta_cached_variant_models.Rdata') 
   
   
  ###############
@@ -338,6 +341,6 @@ cox_dat <- d %>%
   ggsave('output/rich_vaccination/omicron_delta_case_hospitalization_vaccine_variant_interaction__relRisk.svg',units='in',width=5,height=5,device='svg')
   
   save(cox_sentinel, cox_sentinel_lineage_params,
-       file='output/omicron_delta_cached_variant_models.Rdata')
+       file='output/omicron_delta_cached_variant_models_interaction.Rdata')
   
   
