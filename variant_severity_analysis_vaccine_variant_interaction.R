@@ -157,6 +157,10 @@ summary(cox_sentinel)
 
 cox_sentinel_lineage_params <- coxme_random_params(cox_sentinel,cox_dat,group='active_vaccine_type_dose_lineage', by_lineage=FALSE) # by_lineage flag make "none" the reference for each variant
 
+cox_sentinel_lineage_params$active_vaccine_type_dose <- as.character(cox_sentinel_lineage_params$active_vaccine_type_dose)
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(!(cox_sentinel_lineage_params$active_vaccine_type_dose_lineage %in% c("≥21 days post dose one to \n <21 days post booster : other", "≥21 days post booster : Gamma (P.1)","≥21 days post booster : Alpha (B.1.1.7)", "≥21 days post booster : other" )))
+cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose, levels=c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster"))
+
 lineage_names <- c(
   `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)",
   `Gamma (P.1)`="Gamma (P.1)",
@@ -195,3 +199,7 @@ hosp_by_variant_vaccine %>%
   save_kable(file = "output/rich_vaccination/hosp_by_variant_and_vaccine.png",
              density=600,zoom=3) 
 write.table(hosp_by_variant_vaccine,'output/rich_vaccination/hosp_by_variant_and_vaccine.csv',sep=',',row.names = FALSE)
+
+
+ancestral_booster <- cox_dat %>% filter(active_vaccine_type_dose == "≥21 days post booster : other")
+view(ancestral_booster)
