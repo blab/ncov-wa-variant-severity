@@ -283,6 +283,7 @@ WHO_names <- list(B.1.1.7 = 'Alpha (B.1.1.7)',
                   B.1.617.1 = "Kappa (B.1.617.1)",
                   B.1.621 = "Mu (B.1.621)",
                   B.1.621.1 = "Mu (B.1.621)",
+                  BB.2 = "Mu (B.1.621)", 
                   B.1.526='Iota (B.1.526)',
                   B.1.525='Eta (B.1.525)',
                   C.37='Lambda (C.37)',
@@ -495,7 +496,6 @@ d$second_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2==217] <- 'Pfize
 d$third_shot[d$IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_3==212] <- 'J&J'
 
 # drop rows with unknown vaccine type 
-### Miguel's thoughts: if we're just doing vaccinated/unvaccinated, maybe we can include these people back in?  
 d <- d %>% filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_1,213)) %>%
   filter(!compareNA(IIS_VACCINE_INFORMATION_AVAILABLE_ADMINISTERED_2,213))
 exclusions <- exclusions %>% rbind(data.frame(data_view='known vaccine',reason='unknown vaccine type',n_kept=nrow(d)))
@@ -696,7 +696,7 @@ d$hosp_days_at_risk <- d$hosp_days_at_risk + 14
 hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
 
-weird_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
+implausible_dates <- d %>% filter(compareNA(hosp_days_at_risk,0,test='<'))
 
 incorrect_lineage <- data.frame(exclude = c('USA/WA-CDC-UW21050153778/2021', 'USA/WA-UW-21050578561/2021', 'USA/WA-CDC-UW21060839220/2021'))
 
@@ -704,9 +704,17 @@ d <- d %>% filter(!(d$CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER %in% incorrect_li
 
 
 exclusions <- exclusions %>% rbind(data.frame(data_view='correct GISAID lineage assignment',
-                                              reason='exclude cases assigned as omicron by GISAID with impossible collection dates',
+                                              reason='exclude cases assigned as omicron by GISAID with improbable collection dates',
                                               n_kept=nrow(d)))
 
+
+implausible_booster <- d %>% filter((vaccination_active =="≥21 days post booster") & (collection_date < "2021-07-01"))
+view(implausible_booster)
+#if there are any that are any suspicious
+#d <- d %>% filter(!((vaccination_active =="≥21 days post booster") & (collection_date < "2021-07-01")))
+#exclusions <- exclusions %>% rbind(data.frame(data_view='correct booster assignment',
+#                                             reason='exclude cases assigned as booster with improbable collection dates',
+#                                              n_kept=nrow(d)))
 
 ###### add analysis type label field
 exclusions$analysis <- 'all'
