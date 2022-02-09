@@ -896,7 +896,7 @@ write.table(exclusions,'output/rich_vaccination/sample_size_and_exclusions_summa
 # save model objects where DUA allows (so any that do not contain data matrix)
 save(cox_sentinel,
      cox_sentinel_lineage_params,cox_sentinel_race_params,cox_sentinel_age_params,cox_sentinel_sex_params,cox_sentinel_vaccine_params,cox_sentinel_vax_rel_risk,
-     cox_fixed_sentinel,cox_all, cox_sentinel_race_lineage_params,
+     cox_fixed_sentinel,cox_all, cox_sentinel_race_lineage_params, 
      cox_fixed_sentinel_lineage_params,cox_all_lineage_params,pois_all_lineage_params,pois_sentinel_lineage_params,
      cox_fixed_sentinel_vaccine_params,cox_all_vaccine_params,pois_all_vaccine_params,pois_sentinel_vaccine_params,
      file='output/rich_vaccination/cached_models.Rdata')

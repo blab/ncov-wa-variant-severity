@@ -380,14 +380,12 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='valid ages',reason='mis
 
 # dates
 d$collection_date <- as.Date(d$collection_date)
-####
-#ASK STEPH TO CHECK ADMITDATE 
-####
 d$admitdate <- as.Date(d$admitdate)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_1)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_2)
 d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3 <- as.Date(d$IIS_VACCINE_INFORMATION_AVAILABLE_DATE_3)
 d$earliest_positive_test_date <- as.Date(d$earliest_positive_test_date)
+d$DEATH_DATE <- as.Date(d$DEATH_DATE)
 
 d$week_collection <- paste(year(d$collection_date),sprintf('%02d',week(d$collection_date)),sep='-')
 d$week_collection <- factor(d$week_collection, levels=sort(unique(d$week_collection)))
@@ -397,6 +395,8 @@ d$week_collection_number <- as.numeric(d$week_collection)
 d$mhosp <- as.character(d$mhosp) 
 d$mhosp[is.na(d$mhosp)] <- 'No'
 d$mhosp <- factor(d$mhosp, levels=c('No','Yes'))
+d$dead <- c('Yes','No')[1+as.numeric(is.na(d$DEATH_DATE))]
+d$dead <- factor(d$dead, levels=c('No','Yes'))
 
 #exluding those with admission but no admit date
 d <- d %>% filter(!((mhosp == "Yes")&is.na(admitdate)))
@@ -633,6 +633,11 @@ hist(d$hosp_days_at_risk)
 mean(d$hosp_days_at_risk>=0,na.rm=TRUE)
 mean(d$hosp_days_at_risk>=-14,na.rm=TRUE)
 
+d$dead_days_at_risk <- as.numeric(d$DEATH_DATE - d$collection_date)
+hist(d$dead_days_at_risk)
+mean(d$dead_days_at_risk>=0,na.rm=TRUE)
+
+
 # exclude implausibly early admission dates, where this sequence may not represent
 # the infection that lead to hospitalization
 d <- d %>% filter(!compareNA(hosp_days_at_risk,-14,test='<'))
@@ -688,11 +693,13 @@ d_30_count <- d_30 %>% filter(!is.na(hosp_days_at_risk)) %>% count()
 ##### NEED TO UPDATE
 # format days at risk for people who haven't been hospitalized 
 no_hosp_idx <- is.na(d$hosp_days_at_risk)
-d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/21/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
-
+d$hosp_days_at_risk[no_hosp_idx] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d$collection_date[no_hosp_idx]
+no_dead_idx <- is.na(d$dead_days_at_risk)
+d$dead_days_at_risk[no_dead_idx] <- as.Date('01/14/2022', format = "%m/%d/%Y")-d$collection_date[no_dead_idx]
 
 # start time at risk in the 14 days preceding hospitalization or sample collection
 d$hosp_days_at_risk <- d$hosp_days_at_risk + 14
+d$dead_days_at_risk <- d$dead_days_at_risk + 14
 hist(d$hosp_days_at_risk)
 hist(d$hosp_days_at_risk[d$mhosp=='Yes'])
 
@@ -709,12 +716,12 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='correct GISAID lineage 
 
 
 implausible_booster <- d %>% filter((vaccination_active =="≥21 days post booster") & (collection_date < "2021-07-01"))
-view(implausible_booster)
-#if there are any that are any suspicious
-#d <- d %>% filter(!((vaccination_active =="≥21 days post booster") & (collection_date < "2021-07-01")))
-#exclusions <- exclusions %>% rbind(data.frame(data_view='correct booster assignment',
-#                                             reason='exclude cases assigned as booster with improbable collection dates',
-#                                              n_kept=nrow(d)))
+
+
+d <- d %>% filter(!((vaccination_active =="≥21 days post booster") & (collection_date < "2021-07-01")))
+exclusions <- exclusions %>% rbind(data.frame(data_view='correct booster assignment',
+                                             reason='exclude cases assigned as booster with improbable collection dates',
+                                              n_kept=nrow(d)))
 
 ###### add analysis type label field
 exclusions$analysis <- 'all'
