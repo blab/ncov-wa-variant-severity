@@ -250,6 +250,14 @@ ggsurv
 
 ggsave('output/rich_vaccination/km_curves.png',units='in',width=5,height=3,device='png')
 
+variant.km <- survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat, conf.type = "log-log")
+
+plot(variant.km,fun='cumhaz',xlab='Time (in days)',conf.int = TRUE, ylab='Cumulative hazard',main='Nelson ́Aalen cumulative hazard estimates', ylim=c(0, 2.5),
+     lwd=2,cex=1.5)
+legend('bottomright', lwd=c (2 , 2) , cex =1.2)
+
+
+
 ##### Control variables
 # age
 cox_sentinel_age_params <- data.frame(age_bin=sub('age_bin','',names(coef(cox_sentinel))),
