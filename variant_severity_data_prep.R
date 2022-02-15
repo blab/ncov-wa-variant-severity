@@ -10,7 +10,7 @@ library(lubridate)
 library(kableExtra)
 # load data
 ##### CHANGE THIS TO REFLECT MOST RECENT DATA PULL
-raw <- read.delim('data_pull_2021-09-02_subset.csv',sep=',',header = TRUE)
+raw <- read.delim('data_pull_2point0_2022-01-31.csv',sep=',',header = TRUE)
 
 names(raw)
 
@@ -337,7 +337,7 @@ sum((d$lineage=='None'),na.rm=TRUE)
 sum(is.na(d$lineage=='None'),na.rm=TRUE)
 
 # Excluding poor quality seqs
-exclude_seqs <- read.delim('exclusions.csv',sep=',',header = FALSE)
+exclude_seqs <- read.delim('variant-severity-exclusions.csv',sep=',',header = FALSE)
 
 
 sum((d$lineage=='None'),na.rm=TRUE)
