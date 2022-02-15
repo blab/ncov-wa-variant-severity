@@ -31,6 +31,7 @@ cmap<-rgb(t(round(col2rgb(cmap)*0.9)), maxColorValue=255)
 cmap <- cmap[1:length(levels(d$who_lineage))]
 names(cmap) <- levels(d$who_lineage)[c(2:length(cmap),1)]
 cmap['other']='#999999'
+cmap["Omicron (B.1.1.529)"]
 
 
 #########################
@@ -52,7 +53,9 @@ sum(d$MECHANICAL_VENTILATION=="Yes",na.rm=TRUE)
 
 ## variant fraction running average
 
-plot_dat <- d %>% 
+des_d <- d %>% filter(!(who_lineage %in% c('Kappa (B.1.617.1)', 'Mu (B.1.621)', 'Eta (B.1.525)','Lambda (C.37)', 'Zeta (P.2)'))) %>% droplevels()
+
+plot_dat <- des_d %>% 
   select(best_infection_event_date,who_lineage) %>%
   group_by(best_infection_event_date,who_lineage) %>%
   summarize(variant_count=n()) %>%
@@ -73,7 +76,7 @@ plot_dat<-plot_dat %>% group_by(who_lineage) %>%
   drop_na() %>%
   group_by(best_infection_event_date) %>%
   mutate(running_average=running_average/sum(running_average)) %>% 
-  mutate(who_lineage=factor(who_lineage,levels=levels(d$who_lineage))) %>%
+  mutate(who_lineage=factor(who_lineage,levels=levels(des_d$who_lineage))) %>%
   droplevels() 
 
 # area plot

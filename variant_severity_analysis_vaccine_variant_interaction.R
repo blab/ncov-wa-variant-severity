@@ -121,12 +121,12 @@ coxph_params <- function(mod,ref,group='who_lineage'){
 ############# hierarchical cox model
 ############# vaccination with rich model of vaccine type and variant
 
-# hospital sentinel only cox hierarchical model (it's currently filtering out J&J due to sample size)
+# hospital sentinel only cox hierarchical model 
 cox_dat <- d %>%
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>%
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' &is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin, collection_date, admitdate,
-         mhosp,hosp_days_at_risk, vaccination_active) %>%
+         mhosp,hosp_days_at_risk, vaccination_active, week_collection_number, CDC_N_COV_2019_SEQUENCE_ACCESSION_NUMBER) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
@@ -136,7 +136,7 @@ cox_dat <- d %>%
                                                         who_lineage,
                                                         sep=' : ')
   ) %>%
-  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)')) %>%
+  filter(who_lineage %in% c('other', 'Alpha (B.1.1.7)', 'Gamma (P.1)','Delta (B.1.617.2)', "Omicron (B.1.1.529)")) %>% #Will need to hardcode omicron in 
   droplevels()
 
 # track which data went into this analysis
@@ -150,31 +150,39 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_sentinel <- coxme(hosp_surv ~
                         (1|active_vaccine_type_dose_lineage) +
-                        age_bin + (1|SEX_AT_BIRTH),
+                        age_bin + (1|SEX_AT_BIRTH) + week_collection_number,
                       data=cox_dat,
                       x=FALSE,y=FALSE)
 summary(cox_sentinel)
 
 cox_sentinel_lineage_params <- coxme_random_params(cox_sentinel,cox_dat,group='active_vaccine_type_dose_lineage', by_lineage=FALSE) # by_lineage flag make "none" the reference for each variant
+
 cox_sentinel_lineage_params$active_vaccine_type_dose <- as.character(cox_sentinel_lineage_params$active_vaccine_type_dose)
-cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(cox_sentinel_lineage_params$active_vaccine_type_dose_lineage != "≥21 days post dose one : other")
-cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose,
-                                                               levels=c("No Vaccination to \n <21 days post dose one","≥21 days post dose one"))
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(!(cox_sentinel_lineage_params$active_vaccine_type_dose_lineage %in% c("≥21 days post dose one to \n <21 days post booster : other", "≥21 days post booster : Gamma (P.1)","≥21 days post booster : Alpha (B.1.1.7)", "≥21 days post booster : other" )))
+cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose, levels=c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster"))
+
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage, "Omicron (B.1.1.529)",  "Delta (B.1.617.2)","Gamma (P.1)", "Alpha (B.1.1.7)" ,  "other" ))
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(active_vaccine_type_dose = fct_relevel(active_vaccine_type_dose,  "≥21 days post booster", "≥21 days post dose one to \n <21 days post booster", "No Vaccination to \n <21 days post dose one"  ))
+
+
 lineage_names <- c(
+  `other`="REF:Ancestral",
+  `Alpha (B.1.1.7)`="Alpha (B.1.1.7)",
   `Gamma (P.1)`="Gamma (P.1)",
   `Delta (B.1.617.2)`="Delta (B.1.617.2)",
-  `Alpha (B.1.1.7)`="Alpha (B.1.1.7)",
-  `other`="REF:Ancestral"
+  `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)"
 )
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=active_vaccine_type_dose,x=logRR,xmin=lower95,xmax=upper95,color=who_lineage)) +
   geom_vline(data=data.frame(xint=0),mapping=aes(xintercept=xint),linetype='dashed') +
-  facet_grid(rows=vars(fct_rev(who_lineage)), scales = "free_y", labeller=as_labeller(lineage_names)) +
-  scale_color_manual(values=cmap, guide=FALSE)+
+ # geom_point(data=cox_sentinel_lineage_params[cox_sentinel_lineage_params$logRR == 0.0],aes(y=active_vaccine_type_dose,x=logRR),color="grey")+
+  facet_grid(rows=vars(fct_rev(who_lineage)), scales = "free_y",  labeller=as_labeller(lineage_names)) +
+  scale_color_manual(values= cmap, guide=FALSE)+
   scale_x_continuous(breaks=log(c(1/32, 1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
-                     limits=log(c(1/24,16))) +
+                     limits=log(c(1/8, 6))) +
+ # scale_color_identity() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank(),
@@ -188,3 +196,12 @@ ggsave('output/rich_vaccination/case_hospitalization_vaccine_variant_interaction
 save(cox_sentinel, cox_sentinel_lineage_params,
      file='output/cached_variant_models.Rdata')
 
+
+hosp_by_variant_vaccine <- with(cox_dat, table(mhosp, active_vaccine_type_dose_lineage))
+
+hosp_by_variant_vaccine %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/hosp_by_variant_and_vaccine.png",
+             density=600,zoom=3) 
+write.table(hosp_by_variant_vaccine,'output/rich_vaccination/hosp_by_variant_and_vaccine.csv',sep=',',row.names = FALSE)

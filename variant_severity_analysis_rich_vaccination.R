@@ -13,6 +13,8 @@ library(coxme)
 library(survival)
 library(lme4)
 library(kableExtra)
+library(survminer)
+library(lmtest)
 
 
 # package:merTools is also required in a function, but not loaded into global namespace since it conflicts with dplyr::Select
@@ -91,7 +93,7 @@ glmer_random_params <- function(mod,ref, group='who_lineage'){
   if(group=='who_lineage'){
     ref_set =  c('other',levels(ref$who_lineage))
   } else if (group == 'vaccination_active'){
-    ref_set =  c('No',levels(ref$vaccination_active))
+    ref_set =  c('No Vaccination to \n <21 days post dose one',levels(ref$vaccination_active))
   }
   res<-merTools::REextract(mod)
   res <- res %>% filter(rownames(res) %in% ref_set)
@@ -123,24 +125,26 @@ glmer_random_params <- function(mod,ref, group='who_lineage'){
 ######################################
 
 names(d)
-
+d$REINFECTION_FLAG <- as.character(d$REINFECTION_FLAG)
 ############# PRIMARY ANALYSIS. Case-Hospitalization ratio in sentinel surveillance
 ############# hierarchical cox model
 ############# vaccination with rich model of vaccine type and variant
 
 # hospital sentinel only cox hierarchical model
+## added in excludsion for new reinfection flag since that only came into play post setp 2021
 cox_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk, vaccination_active,
-         vaccination_active,week_collection_number) %>%
+         vaccination_active,week_collection_number, race, COUNTY) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 
 # track which data went into this analysis
@@ -154,20 +158,21 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_sentinel <- coxme(hosp_surv ~ (1|who_lineage) + 
                         age_bin + (1|SEX_AT_BIRTH) +
-                         (1|vaccination_active), 
+                         (1|vaccination_active) + week_collection_number, 
                       data=cox_dat,
                       x=FALSE,y=FALSE)
 summary(cox_sentinel)
 
 cox_sentinel_lineage_params <- coxme_random_params(cox_sentinel,cox_dat,group='who_lineage')
 
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95,color=who_lineage)) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8,16)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/2,6))) +
   scale_color_manual(values=cmap,guide=FALSE) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
@@ -209,6 +214,45 @@ cox_sentinel_vax_rel_risk %>%
              density=600,zoom=3) 
 write.table(cox_sentinel_vax_rel_risk,'output/rich_vaccination/variant_severity_simple_vaccine_relative_risk_hospitalization.csv',sep=',',row.names = FALSE)
 
+##Likelihood ratio test for global effect:
+
+#we already have out main model: cox_sentienl
+
+#now create a reduced model with df -1 by removing the effect that we're interested in, which is variants
+cox_sentinel_test <- coxme(hosp_surv ~  age_bin + (1|SEX_AT_BIRTH) +
+                             (1|vaccination_active) + week_collection_number, 
+                           data=cox_dat,
+                           x=FALSE,y=FALSE)
+
+#now conduct a LR test
+
+lrtest(cox_sentinel, cox_sentinel_test)
+
+## adding in Kaplan meier curves 
+#### always make sure to check labels since the legend is hardcoded in
+hosp_counts <- survdiff(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat)
+hosp_counts %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/cases_and_hosps.png",
+             density=600,zoom=3) 
+write.table(hosp_counts,'output/rich_vaccination/variant_severity_cases_and_hosp.csv',sep=',',row.names = FALSE)
+
+ggsurv <- ggsurvplot(
+  fit = survfit(Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=='Yes')) ~ who_lineage, data= cox_dat), 
+  
+  ylim = c(0.92, 1.00),
+  
+ # risk.table = TRUE, risk.table.col = "who_lineage", risk.table.height = 0.25,
+  
+  legend.labs = c("Ancestral", "Alpha", 'Beta',"Delta", "Epsilon", "Gamma", "Iota", "Omicron"))
+
+ggsurv$plot <- ggsurv$plot + 
+  theme(legend.text = element_text(size = 7, face = "bold"),legend.key.height = unit(0.75, 'cm'), legend.key.width = unit(0.5, 'cm'))
+ggsurv
+
+ggsave('output/rich_vaccination/km_curves.png',units='in',width=5,height=3,device='png')
+
 
 ##### Control variables
 # age
@@ -235,6 +279,98 @@ ggplot() +
 
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.png',units='in',width=5,height=3,device='png')
 ggsave('output/rich_vaccination/case_hospitalization_age_relRisk.svg',units='in',width=5,height=3,device='svg')
+
+# race ADDING THIS BACK IN FOR REVIEWERS
+#### 
+
+cox_sentinel_race_and_county <- coxme(hosp_surv ~ (1|who_lineage) + 
+                        age_bin + (1|SEX_AT_BIRTH) +
+                        (1|vaccination_active) + week_collection_number + (1|race) + (1|COUNTY), 
+                      data=cox_dat,
+                      x=FALSE,y=FALSE)
+summary(cox_sentinel_race_and_county)
+
+cox_sentinel_race_lineage_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='who_lineage')
+cox_sentinel_race_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='race')
+
+
+cox_sentinel_race_lineage_params <- cox_sentinel_race_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no race + county)')) +
+  geom_pointrange(data=cox_sentinel_race_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (race + county)')) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (no race + county)','Cox Sentinel (race + county)'),
+                     name='Model') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  scale_y_continuous(breaks=1:length(cox_sentinel_lineage_params$who_lineage),
+                     labels=levels(cox_sentinel_lineage_params$who_lineage))+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
+ggsave('output/rich_vaccination/case_hospitalization_race_sens.png',units='in',width=6,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_race_sens.svg',units='in',width=6,height=3,device='svg')
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_race_params,aes(y=race,x=logRR,xmin=lower95,xmax=upper95)) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_x_continuous(breaks=log(c(1/2,1,2,4)),
+                     labels=(c(1/2,1,2,4))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('risk of hospitalization compared to White') 
+
+ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_race_relRisk.svg',units='in',width=5,height=3,device='svg')
+
+# county ADDING THIS BACK IN FOR REVIEWERS
+#### 
+
+
+cox_sentinel_county_lineage_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='who_lineage')
+cox_sentinel_county_params <- coxme_random_params(cox_sentinel_race_and_county,cox_dat,group='COUNTY')
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (no county)')) +
+  geom_pointrange(data=cox_sentinel_county_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (county)')) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (no county)','Cox Sentinel (county)'),
+                     name='Model') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  scale_y_continuous(breaks=1:length(cox_sentinel_lineage_params$who_lineage),
+                     labels=levels(cox_sentinel_lineage_params$who_lineage))+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
+ggsave('output/rich_vaccination/case_hospitalization_county_sens.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_county_sens.svg',units='in',width=5,height=3,device='svg')
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_county_params,aes(y=COUNTY,x=logRR,xmin=lower95,xmax=upper95)) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_x_continuous(breaks=log(c(1/2,1,2,4)),
+                     labels=(c(1/2,1,2,4))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('risk of hospitalization compared to King county') 
+
+ggsave('output/rich_vaccination/case_hospitalization_county_relRisk.png',units='in',width=5,height=3,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_county_relRisk.svg',units='in',width=5,height=3,device='svg')
 
 # sex
 cox_sentinel_sex_params <- coxme_random_params(cox_sentinel,cox_dat,group='SEX_AT_BIRTH')
@@ -273,31 +409,31 @@ vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number']
 
 cox_sentinel_time_only_vaccine_params <- coxme_random_params(cox_sentinel_time_only,cox_dat,group='vaccination_active')
 
-# variant and time
-cox_sentinel_voc_and_time <- coxme(hosp_surv ~ (1|who_lineage) + 
+# variant and NO time
+cox_sentinel_voc_and_no_time <- coxme(hosp_surv ~ (1|who_lineage) + 
                                      age_bin + (1|SEX_AT_BIRTH) +
-                                     (1|vaccination_active) + week_collection_number, 
+                                     (1|vaccination_active) , 
                                    data=cox_dat,
                                    x=FALSE,y=FALSE)
-summary(cox_sentinel_voc_and_time)
+summary(cox_sentinel_voc_and_no_time)
 
-coef(cox_sentinel_voc_and_time)['week_collection_number']
-vcov(cox_sentinel_voc_and_time)['week_collection_number','week_collection_number']
+coef(cox_sentinel_voc_and_no_time)['week_collection_number']
+vcov(cox_sentinel_voc_and_no_time)['week_collection_number','week_collection_number']
 
 
-cox_sentinel_voc_and_time_vaccine_params <- coxme_random_params(cox_sentinel_voc_and_time,cox_dat,group='vaccination_active')
-cox_sentinel_voc_and_time_lineage_params <- coxme_random_params(cox_sentinel_voc_and_time,cox_dat,group='who_lineage')
+cox_sentinel_voc_and_no_time_vaccine_params <- coxme_random_params(cox_sentinel_voc_and_no_time,cox_dat,group='vaccination_active')
+cox_sentinel_voc_and_no_time_lineage_params <- coxme_random_params(cox_sentinel_voc_and_no_time,cox_dat,group='who_lineage')
 
 
 # risk reduction of hospitalization from vaccine
 
 
 ggplot() +
-  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=as.numeric(who_lineage),x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI & time)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_lineage_params,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_color_manual(values=c('black','gray','cornflowerblue'),
-                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)','Cox Sentinel (time only)'),
+                     breaks=c('Cox Sentinel (VOC/VOI & time)','Cox Sentinel (VOC/VOI)', 'Cox Sentinel (time only)'),
                      name='Model') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
@@ -315,11 +451,10 @@ ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_voc_and_tim
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)+0.1,x=logRR,xmin=lower95,xmax=upper95, color='Cox Sentinel (VOC/VOI)')) +
-  geom_pointrange(data=cox_sentinel_voc_and_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
-  geom_pointrange(data=cox_sentinel_time_only_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (time only)')) +
+  geom_pointrange(data=cox_sentinel_voc_and_no_time_vaccine_params,aes(y=as.numeric(vaccination_active),x=logRR,xmin=lower95,xmax=upper95,color='Cox Sentinel (VOC/VOI & time)')) +
   geom_vline(aes(xintercept=0),linetype='dashed') +
-  scale_color_manual(values=c('black','gray','cornflowerblue'),
-                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)','Cox Sentinel (time only)'),
+  scale_color_manual(values=c('black','gray'),
+                     breaks=c('Cox Sentinel (VOC/VOI)','Cox Sentinel (VOC/VOI & time)'),
                      name='Model') +
   scale_x_continuous(breaks=log(c(1/16, 1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
@@ -340,14 +475,124 @@ ggsave('output/rich_vaccination/case_hospitalization_vaccine_relRisk_time_sensit
 # around 80% of the time effect disappears when you include variant, as expected. 
 
 time_effect_size <- data.frame(model = c('Cox Sentinel VOC/VOI','Cox Sentinel VOC/VOI & time','Cox Sentinel time only'),
-                               coef=c(NA,coef(cox_sentinel_voc_and_time)['week_collection_number'],coef(cox_sentinel_time_only)['week_collection_number']),
-                               se=c(NA,vcov(cox_sentinel_voc_and_time)['week_collection_number','week_collection_number'],vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number'])) %>%
+                               coef=c(NA,coef(cox_sentinel)['week_collection_number'],coef(cox_sentinel_time_only)['week_collection_number']),
+                               se=c(NA,vcov(cox_sentinel)['week_collection_number','week_collection_number'],vcov(cox_sentinel_time_only)['week_collection_number','week_collection_number'])) %>%
   mutate(z = coef/se) %>%
   mutate(coeff_fraction_after_mediation = coef/coef[3]) %>%
   mutate(z_fraction_after_mediation = z/z[3]) %>%
   mutate(effect_size = coef*mean(cox_dat$week_collection_number))
 
 time_effect_size
+
+
+#######################################
+### time from collection to hospitalization 
+
+## 14 day cutoff
+
+cox_dat_14 <- d_14 %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
+
+hosp_surv_14 <- Surv(time=cox_dat_14$hosp_days_at_risk,event=as.numeric(cox_dat_14$mhosp=='Yes'))
+
+
+cox_sentinel_14 <- coxme(hosp_surv_14 ~ (1|who_lineage) + 
+                        age_bin + (1|SEX_AT_BIRTH) +
+                        (1|vaccination_active) + week_collection_number, 
+                      data=cox_dat_14,
+                      x=FALSE,y=FALSE)
+summary(cox_sentinel_14)
+
+cox_sentinel_lineage_params_14 <- coxme_random_params(cox_sentinel_14,cox_dat_14,group='who_lineage')
+
+## 21 day cutoff
+cox_dat_21 <- d_21 %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
+
+hosp_surv_21 <- Surv(time=cox_dat_21$hosp_days_at_risk,event=as.numeric(cox_dat_21$mhosp=='Yes'))
+
+cox_sentinel_21 <- coxme(hosp_surv_21 ~ (1|who_lineage) + 
+                           age_bin + (1|SEX_AT_BIRTH) +
+                           (1|vaccination_active) + week_collection_number, 
+                         data=cox_dat_21,
+                         x=FALSE,y=FALSE)
+summary(cox_sentinel_21)
+
+cox_sentinel_lineage_params_21 <- coxme_random_params(cox_sentinel_21,cox_dat_21,group='who_lineage')
+
+
+cox_dat_30 <- d_30 %>% 
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% 
+  select(who_lineage,SEX_AT_BIRTH,age_bin,
+         mhosp,hosp_days_at_risk, vaccination_active,
+         vaccination_active,week_collection_number) %>%
+  # drop lineages with no hospitalization outcomes
+  group_by(who_lineage) %>%
+  mutate(n_hosp = sum(mhosp=='Yes')) %>%
+  filter(n_hosp>0) %>%
+  ungroup() %>%
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
+
+hosp_surv_30 <- Surv(time=cox_dat_30$hosp_days_at_risk,event=as.numeric(cox_dat_30$mhosp=='Yes'))
+
+
+cox_sentinel_30 <- coxme(hosp_surv_30 ~ (1|who_lineage) + 
+                           age_bin + (1|SEX_AT_BIRTH) +
+                           (1|vaccination_active) + week_collection_number, 
+                         data=cox_dat_30,
+                         x=FALSE,y=FALSE)
+summary(cox_sentinel_30)
+
+cox_sentinel_lineage_params_30 <- coxme_random_params(cox_sentinel_30,cox_dat_30,group='who_lineage')
+
+cox_sentinel_lineage_params_14 <- cox_sentinel_lineage_params_14 %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+cox_sentinel_lineage_params_21 <- cox_sentinel_lineage_params_21 %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+cox_sentinel_lineage_params_30 <- cox_sentinel_lineage_params_30 %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+
+
+ggplot() +
+  geom_pointrange(data=cox_sentinel_lineage_params,aes(y=who_lineage,x=logRR,xmin=lower95,xmax=upper95, color = 'Cox Sentinel (no filter)')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_14,aes(y=as.numeric(who_lineage)-0.1,x=logRR,xmin=lower95,xmax=upper95,color='14 day')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_21,aes(y=as.numeric(who_lineage)-0.2,x=logRR,xmin=lower95,xmax=upper95,color='21 day')) +
+  geom_pointrange(data=cox_sentinel_lineage_params_30,aes(y=as.numeric(who_lineage)-0.3,x=logRR,xmin=lower95,xmax=upper95,color='30 day')) +
+  geom_vline(aes(xintercept=0),linetype='dashed') +
+  scale_color_manual(values=c('black','gray','cornflowerblue','forestgreen'),
+                     breaks=c('Cox Sentinel (no filter)','14 day','21 day','30 day'),
+                     name=' Max Time from Collection to Hosp') +
+  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8,16,32)),
+                     labels=(c(1/8,1/4,1/2,1,2,4,8,16,32))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        panel.grid.minor.y = element_blank()) +
+  ylab('') +
+  xlab('hazard ratio for hospitalization') 
+
+ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_hosp_time_cutoff_sensitivity.png',units='in',width=7,height=4,device='png')
+ggsave('output/rich_vaccination/case_hospitalization_variant_relRisk_hosp_time_cutoff_sensitivity.svg',units='in',width=7,height=4,device='svg')
 
 ########################################
 ### fixed vs hierarchical vs poisson
@@ -362,7 +607,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sentinel surveillan
 
 cox_fixed_sentinel <- coxph(hosp_surv ~ who_lineage + 
                               age_bin + SEX_AT_BIRTH +
-                              vaccination_active,
+                              vaccination_active +week_collection_number,
                             data=cox_dat,
                             x=FALSE,y=FALSE)
 summary(cox_fixed_sentinel)
@@ -401,16 +646,17 @@ ggplot() +
 
 # hospitalization all samples
 cox_dat <- d %>% 
-  filter(infection_type != 'suspected reinfection' ) %>% # can toggle to look at reinfection
+  filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG) ) %>% # can toggle to look at reinfection
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,hosp_days_at_risk,
-         vaccination_active) %>%
+         vaccination_active, week_collection_number) %>%
   # drop lineages with no hospitalization outcomes
   group_by(who_lineage) %>%
   mutate(n_hosp = sum(mhosp=='Yes')) %>%
   filter(n_hosp>0) %>%
   ungroup() %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and lineages with at least 1 hospitalization except suspected reinfections',
                                               reason='sensitivity analysis',
@@ -422,7 +668,7 @@ hosp_surv <- Surv(time=cox_dat$hosp_days_at_risk,event=as.numeric(cox_dat$mhosp=
 
 cox_all <- coxme(hosp_surv ~ (1|who_lineage) + 
                    age_bin + (1|SEX_AT_BIRTH) +
-                   (1|vaccination_active),
+                   (1|vaccination_active) + week_collection_number,
                  data=cox_dat,
                  x=FALSE,y=FALSE)
 summary(cox_all)
@@ -435,7 +681,7 @@ ggplot() +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -467,8 +713,8 @@ ggplot() +
 # SENSITIVITY POISSON REGRESSION
 # hospitalization sentinel samples
 pois_dat <- d %>% 
-  filter(sequence_reason_clean=='SENTINEL SURVEILLANCE' &
-           infection_type != 'suspected reinfection') %>%
+  filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE' &
+           infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>%
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp,
          vaccination_active, 
@@ -478,7 +724,8 @@ pois_dat <- d %>%
   summarize(n_hosp = sum(mhosp=='Yes'),
             cases=n()) %>%
   filter(who_lineage %in% c('other',levels(cox_sentinel_lineage_params$who_lineage))) %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 sum(pois_dat$cases)
 
@@ -490,7 +737,7 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sentinel surveillan
 
 pois_sentinel <- glmer(n_hosp ~ (1|who_lineage) + log(offset(cases)) + 
                          age_bin + (1|SEX_AT_BIRTH) +
-                         (1|vaccination_active),
+                         (1|vaccination_active) +week_collection_number,
                        data=pois_dat,
                        family='poisson')
 summary(pois_sentinel)
@@ -504,7 +751,7 @@ ggplot() +
   geom_jitter() +
   scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
                      labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+                     limits=log(c(1/4,9))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -519,9 +766,9 @@ ggplot() +
   geom_pointrange(data=pois_sentinel_vaccine_params,aes(y=as.numeric(vaccination_active)-0.1,x=logRR,xmin=lower95,xmax=upper95),color='red') +
   geom_vline(aes(xintercept=0),linetype='dashed') +
   geom_jitter() +
-  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
-                     labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/16,2))) +
+  scale_x_continuous(breaks=log(c(1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                     labels=(c(1/16, 1/8,1/4,1/2,1,2,4,8,16)),
+                     limits=log(c(1/16,8))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank()) +
@@ -533,8 +780,8 @@ ggplot() +
 # SENSITIVITY POISSON REGRESSION
 # hospitalization all samples
 pois_dat <- d %>% 
-  # filter(sequence_reason_clean=='SENTINEL SURVEILLANCE') %>%
-  filter(infection_type != 'suspected reinfection') %>% # can toggle to include reinfections
+  # filter(CDC_N_COV_2019_SEQUENCE_REASON=='SENTINEL SURVEILLANCE') %>%
+  filter(infection_type != 'suspected reinfection' & is.na(REINFECTION_FLAG)) %>% # can toggle to include reinfections
   select(who_lineage,SEX_AT_BIRTH,age_bin,
          mhosp, week_collection_number,
          vaccination_active) %>%
@@ -543,7 +790,8 @@ pois_dat <- d %>%
   summarize(n_hosp = sum(mhosp=='Yes'),
             cases=n()) %>%
   filter(who_lineage %in% c('other',levels(cox_sentinel_lineage_params$who_lineage))) %>%
-  droplevels()
+  droplevels() %>%
+  filter(!(who_lineage %in% c("Kappa (B.1.617.1)", "Mu (B.1.621)", 'Eta (B.1.525)','Lambda (C.37)')))
 
 exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and lineages with at least 1 hospitalization except suspected reinfections',
                                               reason='sensitivity analysis',
@@ -553,10 +801,16 @@ exclusions <- exclusions %>% rbind(data.frame(data_view='all sequences and linea
 
 pois_all <- glmer(n_hosp ~ (1|who_lineage) + log(offset(cases)) + 
                     age_bin + (1|SEX_AT_BIRTH) + 
-                    (1|vaccination_active),
+                    (1|vaccination_active) +week_collection_number,
                   data=pois_dat,
                   family='poisson')
 summary(pois_all)
+
+pois_all %>%
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F) %>%
+  save_kable(file = "output/rich_vaccination/pois_all_summary.png",
+             density=600,zoom=3) 
 
 pois_all_lineage_params <- glmer_random_params(pois_all,cox_sentinel_lineage_params)
 
@@ -567,9 +821,9 @@ ggplot() +
   scale_color_manual(values=c('black','cornflowerblue','orangered','forestgreen'),
                      breaks=c('Cox Sentinel','Cox All','Poisson Sentinel','Poisson All'),
                      name='Model') +
-  scale_x_continuous(breaks=log(c(1/8,1/4,1/2,1,2,4,8)),
-                     labels=(c(1/8,1/4,1/2,1,2,4,8)),
-                     limits=log(c(1/2,9))) +
+  scale_x_continuous(breaks=log(c(1/16,1/8,1/4,1/2,1,2,4,8,16)),
+                     labels=(c(1/16, 1/8,1/4,1/2,1,2,4,8,16)),
+                     limits=log(c(1/16,8))) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ylab('') +
@@ -592,6 +846,11 @@ ggplot() +
   xlab('hazard ratio for hospitalization') 
 
 
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+cox_fixed_sentinel_lineage_params <- cox_fixed_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+cox_all_lineage_params <- cox_all_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+pois_sentinel_lineage_params <- pois_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
+pois_all_lineage_params <- pois_all_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)","Iota (B.1.526)", "Epsilon (B.1.427/B.1.429)", "Delta (B.1.617.2)","Gamma (P.1)", "Beta (B.1.351)", "Alpha (B.1.1.7)"  ))
 
 
 ## all sensitivity analyses together now
@@ -651,10 +910,13 @@ ggsave('output/rich_vaccination/case_hospitalization_vaccine_relRisk_sensitivity
 write.table(exclusions,'output/rich_vaccination/sample_size_and_exclusions_summary.csv',sep=',',row.names=FALSE)
 
 
-# save model objects where DUA allows (so any that do not contain data matrix)
+# save model objects 
 save(cox_sentinel,
      cox_sentinel_lineage_params,cox_sentinel_race_params,cox_sentinel_age_params,cox_sentinel_sex_params,cox_sentinel_vaccine_params,cox_sentinel_vax_rel_risk,
-     cox_fixed_sentinel,cox_all,
+     cox_fixed_sentinel,cox_all, cox_sentinel_race_lineage_params, cox_sentinel_lineage_params_30, cox_sentinel_lineage_params_21, cox_sentinel_lineage_params_14,
      cox_fixed_sentinel_lineage_params,cox_all_lineage_params,pois_all_lineage_params,pois_sentinel_lineage_params,
      cox_fixed_sentinel_vaccine_params,cox_all_vaccine_params,pois_all_vaccine_params,pois_sentinel_vaccine_params,
      file='output/rich_vaccination/cached_models.Rdata')
+
+
+

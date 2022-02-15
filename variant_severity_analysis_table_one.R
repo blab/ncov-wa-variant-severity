@@ -37,4 +37,12 @@ with(cox_dat, chisq.test(table(vaccination_active, who_lineage), correct = FALSE
 with(cox_dat, table(mhosp, vaccination_active))
 
 
-     
+
+#median time to hospialization with IQR by variant. 
+cox_dat$hosp_days_at_risk <- cox_dat$hosp_days_at_risk - 14 #this is done to remove the correction for left censoring done in the data prep script
+
+
+cox_dat %>%  filter(hosp_days_at_risk >0) %>% group_by(who_lineage) %>% summarize(median = median(hosp_days_at_risk), IQR = IQR(hosp_days_at_risk))
+
+cox_dat %>%  filter(hosp_days_at_risk >0) %>% group_by(who_lineage) %>% filter(mhosp == "Yes") summarize(median = median(hosp_days_at_risk), IQR = IQR(hosp_days_at_risk))
+
