@@ -161,22 +161,28 @@ cox_sentinel_lineage_params$active_vaccine_type_dose <- as.character(cox_sentine
 cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% filter(!(cox_sentinel_lineage_params$active_vaccine_type_dose_lineage %in% c("≥21 days post dose one to \n <21 days post booster : other", "≥21 days post booster : Gamma (P.1)","≥21 days post booster : Alpha (B.1.1.7)", "≥21 days post booster : other" )))
 cox_sentinel_lineage_params$active_vaccine_type_dose <- factor(cox_sentinel_lineage_params$active_vaccine_type_dose, levels=c("No Vaccination to \n <21 days post dose one", "≥21 days post dose one to \n <21 days post booster", "≥21 days post booster"))
 
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage, "Omicron (B.1.1.529)",  "Delta (B.1.617.2)","Gamma (P.1)", "Alpha (B.1.1.7)" ,  "other" ))
+cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(active_vaccine_type_dose = fct_relevel(active_vaccine_type_dose,  "≥21 days post booster", "≥21 days post dose one to \n <21 days post booster", "No Vaccination to \n <21 days post dose one"  ))
+
+
 lineage_names <- c(
-  `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)",
+  `other`="REF:Ancestral",
+  `Alpha (B.1.1.7)`="Alpha (B.1.1.7)",
   `Gamma (P.1)`="Gamma (P.1)",
   `Delta (B.1.617.2)`="Delta (B.1.617.2)",
-  `Alpha (B.1.1.7)`="Alpha (B.1.1.7)",
-  `other`="REF:Ancestral"
+  `Omicron (B.1.1.529)` = "Omicron (B.1.1.529)"
 )
 
 ggplot() +
   geom_pointrange(data=cox_sentinel_lineage_params,aes(y=active_vaccine_type_dose,x=logRR,xmin=lower95,xmax=upper95,color=who_lineage)) +
   geom_vline(data=data.frame(xint=0),mapping=aes(xintercept=xint),linetype='dashed') +
-  facet_grid(rows=vars(fct_rev(who_lineage)), scales = "free_y", labeller=as_labeller(lineage_names)) +
-  scale_color_manual(values=cmap, guide=FALSE)+
+ # geom_point(data=cox_sentinel_lineage_params[cox_sentinel_lineage_params$logRR == 0.0],aes(y=active_vaccine_type_dose,x=logRR),color="grey")+
+  facet_grid(rows=vars(fct_rev(who_lineage)), scales = "free_y",  labeller=as_labeller(lineage_names)) +
+  scale_color_manual(values= cmap, guide=FALSE)+
   scale_x_continuous(breaks=log(c(1/32, 1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
                      labels=(c(1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
-                     limits=log(c(1/24,16))) +
+                     limits=log(c(1/8, 6))) +
+ # scale_color_identity() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         panel.grid.minor.y = element_blank(),
@@ -199,7 +205,3 @@ hosp_by_variant_vaccine %>%
   save_kable(file = "output/rich_vaccination/hosp_by_variant_and_vaccine.png",
              density=600,zoom=3) 
 write.table(hosp_by_variant_vaccine,'output/rich_vaccination/hosp_by_variant_and_vaccine.csv',sep=',',row.names = FALSE)
-
-
-ancestral_booster <- cox_dat %>% filter(active_vaccine_type_dose == "≥21 days post booster : other")
-view(ancestral_booster)

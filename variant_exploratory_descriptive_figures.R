@@ -31,6 +31,7 @@ cmap<-rgb(t(round(col2rgb(cmap)*0.9)), maxColorValue=255)
 cmap <- cmap[1:length(levels(d$who_lineage))]
 names(cmap) <- levels(d$who_lineage)[c(2:length(cmap),1)]
 cmap['other']='#999999'
+cmap["Omicron (B.1.1.529)"]
 
 
 #########################
@@ -52,7 +53,7 @@ sum(d$MECHANICAL_VENTILATION=="Yes",na.rm=TRUE)
 
 ## variant fraction running average
 
-des_d <- d %>% filter(!(who_lineage %in% c('Kappa (B.1.617.1)', 'Mu (B.1.621)', 'Eta (B.1.525)','Lambda (C.37)', 'Zeta (P.2)')))
+des_d <- d %>% filter(!(who_lineage %in% c('Kappa (B.1.617.1)', 'Mu (B.1.621)', 'Eta (B.1.525)','Lambda (C.37)', 'Zeta (P.2)'))) %>% droplevels()
 
 plot_dat <- des_d %>% 
   select(best_infection_event_date,who_lineage) %>%

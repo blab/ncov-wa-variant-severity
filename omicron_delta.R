@@ -75,7 +75,7 @@ cox_dat <- d %>%
     geom_vline(aes(xintercept=0),linetype='dashed') +
     scale_x_continuous(breaks=log(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
                        labels=(c(1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16)),
-                       limits=log(c(1/32,9))) +
+                       limits=log(c(1/8,2))) +
     scale_color_manual(values=cmap,guide=FALSE) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
@@ -319,7 +319,9 @@ cox_dat <- d %>%
   cox_sentinel_lineage_params <- coxme_random_params(cox_sentinel,cox_dat,group='active_vaccine_type_dose_lineage', by_lineage=FALSE) # by_lineage flag make "none" the reference for each variant
   
   
-
+  cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(who_lineage = fct_relevel(who_lineage,  "Omicron (B.1.1.529)", "Delta (B.1.617.2)"  ))
+  cox_sentinel_lineage_params <- cox_sentinel_lineage_params %>% mutate(active_vaccine_type_dose = fct_relevel(active_vaccine_type_dose,  "≥21 days post booster", "≥21 days post dose one to \n <21 days post booster", "No Vaccination to \n <21 days post dose one"  ))
+  
   
   ggplot() +
     geom_pointrange(data=cox_sentinel_lineage_params,aes(y=active_vaccine_type_dose,x=logRR,xmin=lower95,xmax=upper95,color=who_lineage)) +
@@ -328,7 +330,7 @@ cox_dat <- d %>%
     scale_color_manual(values=cmap, guide=FALSE)+
     scale_x_continuous(breaks=log(c(1/32, 1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
                        labels=(c(1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32)),
-                       limits=log(c(1/32,16))) +
+                       limits=log(c(1/16,2))) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           panel.grid.minor.y = element_blank(),
